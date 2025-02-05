@@ -1,0 +1,62 @@
+# Ignore client_secret.json and other sensitive files
+client_secret.json
+.env
+config.json
+credentials.json
+secrets.json
+
+# Byte-compiled / cached
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+*.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and debugging
+*.log
+logs/
+debug.log
+
+# MacOS system files
+.DS_Store
+
+# VS Code and IDE settings
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Pip dependencies
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Docker
+*.dockerignore
+
+# Coverage reports
+.coverage
+htmlcov/
+*.cover
+*.coverage
+
+# Pytest cache
+.pytest_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+MANIFEST
+
+# MyPy type checker
+.mypy_cache/
+
+# Ignore compiled Cython files
+*.c
+*.so
