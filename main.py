@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import time
 from PyQt5 import QtWidgets
 from tabs.dashboard_tab import DashboardTab
 from tabs.casino_manager_tab import CasinoManagerTab
@@ -12,13 +13,15 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gambler Settings")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 600, 500)  # Increase height for the status log
 
         # Central widget and layout
         self.central_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.central_widget)
-        self.tab_control = QtWidgets.QTabWidget()
         layout = QtWidgets.QVBoxLayout(self.central_widget)
+
+        # Tab control
+        self.tab_control = QtWidgets.QTabWidget()
         layout.addWidget(self.tab_control)
 
         # Shared attributes
@@ -41,8 +44,39 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
         self.tab_control.addTab(self.youtube_bot_tab, 'YouTube Bot')
         self.tab_control.addTab(self.settings_tab, 'Settings')
 
+        # Status log textbox
+        self.status_log = QtWidgets.QTextEdit()
+        self.status_log.setReadOnly(True)
+        layout.addWidget(self.status_log)
+
         # Load settings from file
         self.load_settings()
+
+    def log_status(self, message):
+        """Log a status message to the status log textbox."""
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.status_log.append(f"[{timestamp}] {message}")
+
+    def save_settings(self):
+        # Save all global settings to settings.json
+        settings = {
+            'offer_file': self.offer_file,
+            'deposit_file': self.deposit_file,
+            'casinos': self.casino_data,
+            'casino_title_file': self.casino_title_file,
+            'casino_play_image_file': self.casino_play_image_file,
+            'oauth_port': self.settings_tab.oauth_port.text(),
+            'channel_id': self.settings_tab.channel_id.text(),
+            'bot_commands': self.bot_commands
+        }
+        with open('settings.json', 'w') as json_file:
+            json.dump(settings, json_file, indent=4)
+
+        # Reload settings in all tabs
+        self.load_settings()
+
+        # Log success message
+        self.log_status("All settings saved successfully!")
 
     def load_settings(self):
         try:
@@ -61,33 +95,14 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
             self.settings_tab.load_settings(settings)
             self.youtube_bot_tab.load_settings(settings)
             self.casino_manager_tab.load_casinos(self.casino_data)
-
-            # Pass casinos to the Dashboard tab
             self.dashboard_tab.load_casinos(self.casino_data)
-
-            # Load dashboard-specific settings
             self.dashboard_tab.load_config()
 
+            # Log success message
+            self.log_status("Settings loaded successfully.")
+
         except FileNotFoundError:
-            pass
-
-    def save_settings(self):
-        # Save all global settings to settings.json
-        settings = {
-            'offer_file': self.offer_file,
-            'deposit_file': self.deposit_file,
-            'casinos': self.casino_data,
-            'casino_title_file': self.casino_title_file,
-            'casino_play_image_file': self.casino_play_image_file,
-            'oauth_port': self.settings_tab.oauth_port.text(),
-            'channel_id': self.settings_tab.channel_id.text(),
-            'bot_commands': self.bot_commands
-        }
-        with open('settings.json', 'w') as json_file:
-            json.dump(settings, json_file, indent=4)
-
-        # Success message
-        QtWidgets.QMessageBox.information(self, "Success", "All settings saved successfully!")
+            self.log_status("No settings file found. Starting with default settings.")
 
 
 if __name__ == '__main__':

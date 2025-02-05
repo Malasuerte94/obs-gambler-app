@@ -58,14 +58,15 @@ class CasinoManagerTab(QtWidgets.QWidget):
             # Save the updated casino data to settings.json
             self.parent.save_settings()
 
-            QMessageBox.information(self, "Success", "Casino added successfully!")
+            # Log success message
+            self.parent.log_status(f"Casino '{title}' added successfully.")
         else:
-            QMessageBox.warning(self, "Warning", "Please complete all fields.")
+            self.parent.log_status("Failed to add casino: Please complete all fields.")
 
     def remove_selected_casino(self):
         selected_items = self.casino_listbox.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "Warning", "Please select a casino to remove.")
+            self.parent.log_status("Failed to remove casino: No casino selected.")
             return
 
         for item in selected_items:
@@ -80,6 +81,8 @@ class CasinoManagerTab(QtWidgets.QWidget):
 
         # Save the updated casino data to settings.json
         self.parent.save_settings()
+
+        self.parent.log_status("Selected casino(s) removed successfully.")
 
     def load_casinos(self, casinos):
         self.casino_listbox.clear()

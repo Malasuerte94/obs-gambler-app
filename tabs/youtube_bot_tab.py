@@ -64,7 +64,7 @@ class YouTubeBotTab(QtWidgets.QWidget):
         # Save the updated bot commands to settings.json
         self.parent.save_settings()
 
-        QMessageBox.information(self, "Success", "Bot commands saved successfully!")
+        self.parent.log_status("Bot commands saved successfully.")
 
     def load_settings(self, settings):
         self.commands_text.setText("\n".join(settings.get('bot_commands', ["!referral"])))

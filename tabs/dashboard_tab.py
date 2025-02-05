@@ -71,10 +71,9 @@ class DashboardTab(QtWidgets.QWidget):
             QMessageBox.critical(self, "Error", f"Failed to load dashboard configuration: {e}")
 
     def save_config(self):
-        """Save dashboard-specific settings to files."""
         # Validate inputs
         if not self.parent.offer_file or not self.parent.deposit_file or not self.parent.casino_title_file:
-            QMessageBox.warning(self, "Warning", "Please complete all fields in the Settings tab.")
+            self.parent.log_status("Failed to save dashboard configuration: Please complete all fields in the Settings tab.")
             return
 
         # Save offer text
@@ -82,7 +81,7 @@ class DashboardTab(QtWidgets.QWidget):
             with open(self.parent.offer_file, "w") as f:
                 f.write(self.offer_title.toPlainText().strip())
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save offer file: {e}")
+            self.parent.log_status(f"Failed to save offer file: {e}")
             return
 
         # Save deposit amount
@@ -93,7 +92,7 @@ class DashboardTab(QtWidgets.QWidget):
             with open(self.parent.deposit_file, "w") as f:
                 f.write(deposit_amount)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save deposit file: {e}")
+            self.parent.log_status(f"Failed to save deposit file: {e}")
             return
 
         # Save selected casino title
@@ -104,11 +103,11 @@ class DashboardTab(QtWidgets.QWidget):
             with open(self.parent.casino_title_file, "w") as f:
                 f.write(selected_casino)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save casino title file: {e}")
+            self.parent.log_status(f"Failed to save casino title file: {e}")
             return
 
-        # Success message
-        QMessageBox.information(self, "Success", "Dashboard configuration saved successfully!")
+        # Log success message
+        self.parent.log_status("Dashboard configuration saved successfully.")
 
     def trigger_spin(self):
         try:
