@@ -54,10 +54,25 @@ class SettingsTab(QtWidgets.QWidget):
         self.channel_id = QtWidgets.QLineEdit()
         layout.addWidget(self.channel_id, 5, 1)
 
+        # Spin URL Input
+        layout.addWidget(QtWidgets.QLabel("Spin URL:"), 6, 0)
+        self.spin_url_entry = QtWidgets.QLineEdit()
+        layout.addWidget(self.spin_url_entry, 6, 1)
+
+        # YouTube Channel Input
+        layout.addWidget(QtWidgets.QLabel("YouTube Channel:"), 7, 0)
+        self.yt_channel_entry = QtWidgets.QLineEdit()
+        layout.addWidget(self.yt_channel_entry, 7, 1)
+
+        # Kick Channel Input
+        layout.addWidget(QtWidgets.QLabel("Kick Channel:"), 8, 0)
+        self.kick_channel_entry = QtWidgets.QLineEdit()
+        layout.addWidget(self.kick_channel_entry, 8, 1)
+
         # Save Button
         save_button = QtWidgets.QPushButton("Save Settings")
-        save_button.clicked.connect(self.parent.save_settings)  # Connect to parent's save_settings
-        layout.addWidget(save_button, 6, 1)
+        save_button.clicked.connect(self.save_settings)
+        layout.addWidget(save_button, 9, 1)
 
     def browse_title_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Offer File", "", "Text Files (*.txt)")
@@ -82,6 +97,14 @@ class SettingsTab(QtWidgets.QWidget):
         if filename:
             self.parent.casino_title_file = filename
             self.casino_title_entry.setText(filename)
+    
+    def save_settings(self):
+        self.parent.spin_url = self.spin_url_entry.text().strip()
+        self.parent.yt_channel = self.yt_channel_entry.text().strip()
+        self.parent.kick_channel = self.kick_channel_entry.text().strip()
+
+        # Call the parent's save_settings method
+        self.parent.save_settings()
 
     def load_settings(self, settings):
         self.offer_entry.setText(settings.get('offer_file', ''))
@@ -90,3 +113,6 @@ class SettingsTab(QtWidgets.QWidget):
         self.casino_play_image_entry.setText(settings.get('casino_play_image_file', ''))
         self.oauth_port.setText(settings.get('oauth_port', '8080'))
         self.channel_id.setText(settings.get('channel_id', ''))
+        self.spin_url_entry.setText(settings.get('spin_url', "https://pacanele.catalin-ene.ro/api/spin/12"))
+        self.yt_channel_entry.setText(settings.get('yt_channel', ""))
+        self.kick_channel_entry.setText(settings.get('kick_channel', ""))

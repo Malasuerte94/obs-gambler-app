@@ -111,8 +111,7 @@ class DashboardTab(QtWidgets.QWidget):
 
     def trigger_spin(self):
         try:
-            # Example API call (replace with actual logic)
-            response = requests.get("https://pacanele.catalin-ene.ro/api/spin/12")
-            print(response.status_code)
+            response = requests.get(self.parent.spin_url)
+            self.parent.log_status(f"Spin request sent to {self.parent.spin_url}. Response: {response.status_code}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+            self.parent.log_status(f"Failed to send spin request: {e}")

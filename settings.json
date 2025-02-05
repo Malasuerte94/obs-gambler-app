@@ -15,5 +15,8 @@
         "!referral",
         "!test",
         "!test2"
-    ]
+    ],
+    "spin_url": "https://pacanele.catalin-ene.ro/api/spin/12",
+    "yt_channel": "",
+    "kick_channel": ""
 }

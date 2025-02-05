@@ -31,6 +31,9 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
         self.casino_play_image_file = ''
         self.casino_data = {}
         self.bot_commands = ["!referral"]
+        self.spin_url = "https://pacanele.catalin-ene.ro/api/spin/12"
+        self.yt_channel = ""
+        self.kick_channel = ""
 
         # Create tabs
         self.dashboard_tab = DashboardTab(self)
@@ -67,7 +70,10 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
             'casino_play_image_file': self.casino_play_image_file,
             'oauth_port': self.settings_tab.oauth_port.text(),
             'channel_id': self.settings_tab.channel_id.text(),
-            'bot_commands': self.bot_commands
+            'bot_commands': self.bot_commands,
+            'spin_url': self.spin_url,  # Save spin URL
+            'yt_channel': self.yt_channel,  # Save YouTube channel
+            'kick_channel': self.kick_channel  # Save Kick channel
         }
         with open('settings.json', 'w') as json_file:
             json.dump(settings, json_file, indent=4)
@@ -90,6 +96,9 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
             self.casino_title_file = settings.get('casino_title_file', '')
             self.casino_play_image_file = settings.get('casino_play_image_file', '')
             self.bot_commands = settings.get('bot_commands', ["!referral"])
+            self.spin_url = settings.get('spin_url', "https://pacanele.catalin-ene.ro/api/spin/12")  # Default spin URL
+            self.yt_channel = settings.get('yt_channel', "")  # Default YouTube channel
+            self.kick_channel = settings.get('kick_channel', "")  # Default Kick channel
 
             # Pass settings to tabs
             self.settings_tab.load_settings(settings)
