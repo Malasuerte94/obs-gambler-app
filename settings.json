@@ -1,0 +1,21 @@
+{
+    "offer_file": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/oferta.txt",
+    "deposit_file": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/start.txt",
+    "casinos": {
+        "testcas": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/casino_images/MIRCEA_logo.png",
+        "testcas1": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/casino_images/sdgasd_logo.png",
+        "testcas2": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/casino_images/spB_logo.png",
+        "asdg": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/casino_play.png",
+        "ASDHSDF": "L:/Projects/GitPersonalProjects/pyGamblerSettings/testcas1_logo.png"
+    },
+    "casino_title_file": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files/casino.txt",
+    "casino_play_image_file": "L:/Projects/GitPersonalProjects/pyGamblerSettings/test_files",
+    "oauth_port": "8080",
+    "channel_id": "UCSsFOXZ3XBubatMA8wmwEOg",
+    "bot_commands": [
+        "!referral",
+        "!test",
+        "!test2",
+        "!test3"
+    ]
+}
