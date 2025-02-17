@@ -44,7 +44,7 @@ class SettingsTab(QtWidgets.QWidget):
         layout.addWidget(casino_title_button, 3, 2)
 
         # OAuth Port Input
-        layout.addWidget(QtWidgets.QLabel("OAuth Port:"), 4, 0)
+        layout.addWidget(QtWidgets.QLabel("OAuth Port: #not-used"), 4, 0)
         self.oauth_port = QtWidgets.QLineEdit()
         self.oauth_port.setText("8080")
         layout.addWidget(self.oauth_port, 4, 1)
@@ -60,19 +60,24 @@ class SettingsTab(QtWidgets.QWidget):
         layout.addWidget(self.spin_url_entry, 6, 1)
 
         # YouTube Channel Input
-        layout.addWidget(QtWidgets.QLabel("YouTube Channel:"), 7, 0)
+        layout.addWidget(QtWidgets.QLabel("YouTube Channel: #not-used"), 7, 0)
         self.yt_channel_entry = QtWidgets.QLineEdit()
         layout.addWidget(self.yt_channel_entry, 7, 1)
 
         # Kick Channel Input
-        layout.addWidget(QtWidgets.QLabel("Kick Channel:"), 8, 0)
+        layout.addWidget(QtWidgets.QLabel("Kick Channel: #not-used"), 8, 0)
         self.kick_channel_entry = QtWidgets.QLineEdit()
         layout.addWidget(self.kick_channel_entry, 8, 1)
+
+        # Kick Channel Input
+        layout.addWidget(QtWidgets.QLabel("Youtube API Key:"), 9, 0)
+        self.youtube_api_entry = QtWidgets.QLineEdit()
+        layout.addWidget(self.youtube_api_entry, 9, 1)
 
         # Save Button
         save_button = QtWidgets.QPushButton("Save Settings")
         save_button.clicked.connect(self.save_settings)
-        layout.addWidget(save_button, 9, 1)
+        layout.addWidget(save_button, 10, 1)
 
     def browse_title_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Offer File", "", "Text Files (*.txt)")
@@ -102,6 +107,9 @@ class SettingsTab(QtWidgets.QWidget):
         self.parent.spin_url = self.spin_url_entry.text().strip()
         self.parent.yt_channel = self.yt_channel_entry.text().strip()
         self.parent.kick_channel = self.kick_channel_entry.text().strip()
+        self.parent.youtube_api = self.youtube_api_entry.text().strip()
+
+
 
         # Call the parent's save_settings method
         self.parent.save_settings()
@@ -116,3 +124,4 @@ class SettingsTab(QtWidgets.QWidget):
         self.spin_url_entry.setText(settings.get('spin_url', "https://pacanele.catalin-ene.ro/api/spin/12"))
         self.yt_channel_entry.setText(settings.get('yt_channel', ""))
         self.kick_channel_entry.setText(settings.get('kick_channel', ""))
+        self.youtube_api_entry.setText(settings.get('youtube_api', ""))

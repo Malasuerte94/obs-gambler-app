@@ -1,19 +1,17 @@
 import sys
-import os
 import json
 import time
 from PyQt5 import QtWidgets
 from tabs.dashboard_tab import DashboardTab
 from tabs.casino_manager_tab import CasinoManagerTab
-from tabs.youtube_bot_tab import YouTubeBotTab
 from tabs.settings_tab import SettingsTab
-
+from tabs.youtube_watcher_tab import YouTubeWatcherTab
 
 class GamblerSettingsApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gambler Settings")
-        self.setGeometry(100, 100, 600, 500)  # Increase height for the status log
+        self.setGeometry(100, 100, 600, 500)
 
         # Central widget and layout
         self.central_widget = QtWidgets.QWidget()
@@ -34,22 +32,26 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
         self.spin_url = "https://pacanele.catalin-ene.ro/api/spin/12"
         self.yt_channel = ""
         self.kick_channel = ""
+        self.youtube_api = ""
 
         # Create tabs
         self.dashboard_tab = DashboardTab(self)
         self.casino_manager_tab = CasinoManagerTab(self)
-        self.youtube_bot_tab = YouTubeBotTab(self)
+        #self.youtube_bot_tab = YouTubeBotTab(self)
+        self.youtube_watcher_tab = YouTubeWatcherTab(self)
         self.settings_tab = SettingsTab(self)
 
         # Add tabs to the tab control
         self.tab_control.addTab(self.dashboard_tab, 'Dashboard')
         self.tab_control.addTab(self.casino_manager_tab, 'Casino Manager')
-        self.tab_control.addTab(self.youtube_bot_tab, 'YouTube Bot')
+        #self.tab_control.addTab(self.youtube_bot_tab, 'YouTube Bot')
+        self.tab_control.addTab(self.youtube_watcher_tab, 'YouTube Watcher')
         self.tab_control.addTab(self.settings_tab, 'Settings')
 
-        # Status log textbox
+        # Status log textbox (smaller: approx 5 text rows)
         self.status_log = QtWidgets.QTextEdit()
         self.status_log.setReadOnly(True)
+        self.status_log.setFixedHeight(100)  # Adjust height as needed
         layout.addWidget(self.status_log)
 
         # Load settings from file
@@ -71,9 +73,10 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
             'oauth_port': self.settings_tab.oauth_port.text(),
             'channel_id': self.settings_tab.channel_id.text(),
             'bot_commands': self.bot_commands,
-            'spin_url': self.spin_url,  # Save spin URL
-            'yt_channel': self.yt_channel,  # Save YouTube channel
-            'kick_channel': self.kick_channel  # Save Kick channel
+            'spin_url': self.spin_url,
+            'yt_channel': self.yt_channel,
+            'kick_channel': self.kick_channel,
+            'youtube_api': self.youtube_api,
         }
         with open('settings.json', 'w') as json_file:
             json.dump(settings, json_file, indent=4)
@@ -96,14 +99,16 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
             self.casino_title_file = settings.get('casino_title_file', '')
             self.casino_play_image_file = settings.get('casino_play_image_file', '')
             self.bot_commands = settings.get('bot_commands', ["!referral"])
-            self.spin_url = settings.get('spin_url', "https://pacanele.catalin-ene.ro/api/spin/12")  # Default spin URL
-            self.yt_channel = settings.get('yt_channel', "")  # Default YouTube channel
-            self.kick_channel = settings.get('kick_channel', "")  # Default Kick channel
+            self.spin_url = settings.get('spin_url', "https://pacanele.catalin-ene.ro/api/spin/12")
+            self.yt_channel = settings.get('channel_id', "")
+            self.kick_channel = settings.get('kick_channel', "")
+            self.youtube_api = settings.get('youtube_api', "")
 
             # Pass settings to tabs
             self.settings_tab.load_settings(settings)
-            self.youtube_bot_tab.load_settings(settings)
+            #self.youtube_bot_tab.load_settings(settings)
             self.casino_manager_tab.load_casinos(self.casino_data)
+            self.youtube_watcher_tab.load_settings(self.youtube_api, self.yt_channel)
             self.dashboard_tab.load_casinos(self.casino_data)
             self.dashboard_tab.load_config()
 
@@ -112,7 +117,6 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
 
         except FileNotFoundError:
             self.log_status("No settings file found. Starting with default settings.")
-
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
