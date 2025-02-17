@@ -60,3 +60,5 @@ MANIFEST
 # Ignore compiled Cython files
 *.c
 *.so
+
+settings.json

@@ -1,8 +1,10 @@
 import sys
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
+
 from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hotword
 from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
+
 
 class YouTubeWatcherTab(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -10,8 +12,8 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
         # We'll maintain a list of chat messages (up to 1000).
         self.chat_history = []
-        self.youtube_api = None
-        self.yt_channel = None
+        self.last_hotword = None
+        self.last_percent = None
 
         # Create a horizontal splitter for three panes.
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
@@ -47,8 +49,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         """
         self.youtube_api = youtube_api
         self.yt_channel = yt_channel
-        print(self.yt_channel)
-        print(self.youtube_api)
         self.log.append("Checking for live stream on channel: " + yt_channel)
         try:
             live_video_id = get_live_video_id(yt_channel, youtube_api)
@@ -92,7 +92,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
     def handleChatMessages(self, result):
         if result is not None:
-            # Update the log panel with the extracted messages.
+            # Update the log panel.
             self.log.setPlainText(result)
             # Update chat history.
             new_msgs = result.split("\n")
@@ -105,6 +105,10 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                 self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
             else:
                 self.hotword_label.setText("HOT-WORD: N/A")
+            # Update the HTML file only if there's a change.
+            if hotword != self.last_hotword or abs(percent - (self.last_percent or 0)) > 0.1:
+                update_hotword_html(hotword, percent)
+                self.last_hotword = hotword
+                self.last_percent = percent
         else:
             self.log.append("No chat messages extracted.")
-

@@ -54,7 +54,7 @@ def analyze_hotword(chat_messages):
         return None, 0.0
 
     # Define a set of common stopwords (all in lowercase).
-    stopwords = {"și", "la", "si", "de", "in", "în", "pe", "el", "e", "ai", "eu"}
+    stopwords = {"și", "la", "si", "de", "in", "în", "pe", "el", "e", "ai", "eu", "cu", "ca"}
 
     # Filter out stopwords from candidates.
     non_stop_candidates = {w: cnt for w, cnt in candidates.items() if w not in stopwords}

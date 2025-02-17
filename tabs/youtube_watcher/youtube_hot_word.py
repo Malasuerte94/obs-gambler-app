@@ -26,6 +26,7 @@ def update_hotword_html(hotword, percent):
 <html>
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="refresh" content="2">
     <title>Hot Word</title>
     <style>
         body {{
@@ -36,12 +37,17 @@ def update_hotword_html(hotword, percent):
             color: white;
         }}
         .card {{
-            background-color: darkgreen;
+            background-color: rgba(0, 49, 0, 0.76);
             padding: 20px;
             margin: 20px;
             border-radius: 8px;
             text-align: center;
-            font-size: 2em;
+            font-size: 1.7em;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
         }}
         .hotword {{
             font-weight: bold;
@@ -54,8 +60,8 @@ def update_hotword_html(hotword, percent):
 </head>
 <body>
     <div class="card">
-        FIERBINTE: <span class="hotword">{hotword.upper()}</span>
-        <span class="percent"> {percent:.1f}%</span>
+        <span>FIERBINTE</span>
+        <div><span class="hotword">{hotword.upper()}</span> <span class="percent"> {percent:.1f}%</span></div>
     </div>
 </body>
 </html>
