@@ -2,6 +2,7 @@ import requests
 
 # Replace with your actual API key if needed.
 YOUTUBE_DATA_VIEW = "##"
+STOP_WORDS = {"și", "la", "si", "de", "in", "în", "pe", "el", "e", "ai", "eu", "cu", "ca", "rotiri", "gratuite", "fara", "depunere", "ala"}
 
 def get_live_video_id(channel_id, api_key=YOUTUBE_DATA_VIEW):
     """
@@ -37,41 +38,55 @@ def analyze_hotword(chat_messages):
     Returns:
         (hotword, percent) tuple, or (None, 0.0) if no candidate exists.
     """
-    # Use only the last 200 messages.
     messages = chat_messages[-200:] if len(chat_messages) > 200 else chat_messages
-
-    # Count occurrence of each unique word (converted to lowercase) per message.
     word_occurrence = {}
     for msg in messages:
-        # Split message into words and ignore those with 1 character.
         words = {w for w in msg.lower().split() if len(w) > 1}
         for w in words:
             word_occurrence[w] = word_occurrence.get(w, 0) + 1
-
-    # Filter words that appear in at least 5 messages.
     candidates = {w: cnt for w, cnt in word_occurrence.items() if cnt >= 5}
     if not candidates:
         return None, 0.0
-
-    # Define a set of common stopwords (all in lowercase).
-    stopwords = {"și", "la", "si", "de", "in", "în", "pe", "el", "e", "ai", "eu", "cu", "ca"}
-
-    # Filter out stopwords from candidates.
-    non_stop_candidates = {w: cnt for w, cnt in candidates.items() if w not in stopwords}
-
-    # If non-stopword candidates exist, choose the one with the highest count;
-    # otherwise, fall back to using the full candidate dictionary.
+    non_stop_candidates = {w: cnt for w, cnt in candidates.items() if w not in STOP_WORDS}
     if non_stop_candidates:
         hotword = max(non_stop_candidates, key=lambda w: non_stop_candidates[w])
     else:
         hotword = max(candidates, key=lambda w: candidates[w])
-
-    # Count in how many messages (of the last 200) the hotword appears.
     count = sum(1 for msg in messages if hotword in msg.lower())
     percent = (count / len(messages)) * 100
     return hotword, percent
 
 
+def analyze_top_words(chat_messages, top_n=3):
+    """
+    Analyze the provided chat messages (a list of strings) and return the top_n hot words
+    along with the percentage of the last 200 messages that contain each word.
 
+    Only words that appear in at least 5 messages are considered.
+    Common stopwords are filtered out and words with 1 character are ignored.
+    The analysis is case-insensitive.
 
-
+    Returns:
+        A list of (word, percent) tuples sorted by frequency (highest first).
+        Returns an empty list if no candidate exists.
+    """
+    messages = chat_messages[-200:] if len(chat_messages) > 200 else chat_messages
+    word_occurrence = {}
+    for msg in messages:
+        words = {w for w in msg.lower().split() if len(w) > 1}
+        for w in words:
+            word_occurrence[w] = word_occurrence.get(w, 0) + 1
+    candidates = {w: cnt for w, cnt in word_occurrence.items() if cnt >= 5}
+    if not candidates:
+        return []
+    non_stop_candidates = {w: cnt for w, cnt in candidates.items() if w not in STOP_WORDS}
+    if non_stop_candidates:
+        sorted_candidates = sorted(non_stop_candidates.items(), key=lambda x: x[1], reverse=True)
+    else:
+        sorted_candidates = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
+    top_words = []
+    for w, cnt in sorted_candidates[:top_n]:
+        count = sum(1 for msg in messages if w in msg.lower())
+        percent = (count / len(messages)) * 100
+        top_words.append((w, percent))
+    return top_words

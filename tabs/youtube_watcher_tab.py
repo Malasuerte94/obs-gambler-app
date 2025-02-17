@@ -2,7 +2,7 @@ import sys
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hotword
+from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hotword, analyze_top_words
 from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
 
 
@@ -10,19 +10,27 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # We'll maintain a list of chat messages (up to 1000).
+        # Maintain chat history (up to 1000 messages).
         self.chat_history = []
         self.last_hotword = None
         self.last_percent = None
+        self.last_top3 = None
 
         # Create a horizontal splitter for three panes.
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
 
-        # Left pane: a label to display the hot word.
+        # Left pane: a widget to hold hotword label and TOP 3 checkbox.
         self.hotword_label = QtWidgets.QLabel("HOT-WORD: N/A")
         self.hotword_label.setAlignment(QtCore.Qt.AlignCenter)
         self.hotword_label.setFixedWidth(150)
-        self.splitter.addWidget(self.hotword_label)
+        self.top3_checkbox = QtWidgets.QCheckBox("TOP 3")
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.hotword_label)
+        left_layout.addWidget(self.top3_checkbox)
+        left_layout.addStretch()
+        left_widget = QtWidgets.QWidget()
+        left_widget.setLayout(left_layout)
+        self.splitter.addWidget(left_widget)
 
         # Middle pane: Chat log.
         self.log = QtWidgets.QTextEdit()
@@ -33,10 +41,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.chat_view = QWebEngineView()
         self.splitter.addWidget(self.chat_view)
 
-        # Set initial splitter sizes (adjust as needed).
         self.splitter.setSizes([150, 300, 800])
-
-        # Main layout.
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.addWidget(self.splitter)
 
@@ -66,7 +71,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
     def onChatLoadFinished(self, ok):
         if ok:
             self.log.append("Chat page loaded successfully. Starting extraction...")
-            # Start a timer to extract chat messages every second.
             self.chat_timer = QtCore.QTimer(self)
             self.chat_timer.timeout.connect(self.extractChatMessages)
             self.chat_timer.start(1000)
@@ -74,7 +78,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             self.log.append("Failed to load chat page.")
 
     def extractChatMessages(self):
-        # JavaScript to extract chat messages.
         js_extract = """
         (function(){
             var messages = [];
@@ -92,23 +95,30 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
     def handleChatMessages(self, result):
         if result is not None:
-            # Update the log panel.
             self.log.setPlainText(result)
-            # Update chat history.
             new_msgs = result.split("\n")
             self.chat_history.extend(new_msgs)
             if len(self.chat_history) > 1000:
                 self.chat_history = self.chat_history[-1000:]
-            # Analyze hotword based on the last 200 messages.
-            hotword, percent = analyze_hotword(self.chat_history)
-            if hotword is not None:
-                self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
+
+            if self.top3_checkbox.isChecked():
+                top3 = analyze_top_words(self.chat_history, top_n=3)
+                if top3:
+                    self.hotword_label.setText("HOT-WORD: (TOP 3)")
+                    if top3 != self.last_top3:
+                        update_hotword_html(None, None, top3=top3)
+                        self.last_top3 = top3
+                else:
+                    self.hotword_label.setText("HOT-WORD: N/A")
             else:
-                self.hotword_label.setText("HOT-WORD: N/A")
-            # Update the HTML file only if there's a change.
-            if hotword != self.last_hotword or abs(percent - (self.last_percent or 0)) > 0.1:
-                update_hotword_html(hotword, percent)
-                self.last_hotword = hotword
-                self.last_percent = percent
+                hotword, percent = analyze_hotword(self.chat_history)
+                if hotword is not None:
+                    self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
+                else:
+                    self.hotword_label.setText("HOT-WORD: N/A")
+                if hotword != self.last_hotword or abs(percent - (self.last_percent or 0)) > 0.1:
+                    update_hotword_html(hotword, percent)
+                    self.last_hotword = hotword
+                    self.last_percent = percent
         else:
             self.log.append("No chat messages extracted.")

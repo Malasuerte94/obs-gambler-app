@@ -1,26 +1,25 @@
 # youtube_hot_word.py
-def update_hotword_html(hotword, percent):
+def update_hotword_html(hotword, percent, top3=None):
     """
-    Create or update an HTML file "hot-word.html" that displays a card with a dark-green background
-    and white text. The card shows:
-
-        FIERBINTE: HOTWORD xx.x%
-
-    where HOTWORD is displayed in uppercase and the percentage is colored on a gradient from blue (0%)
-    to red (100%).
-
-    Parameters:
-        hotword (str or None): The hot word (if None, will be shown as "N/A").
-        percent (float): The percentage of messages containing the hot word.
+    Create or update an HTML file "hot-word.html" that displays a card.
+    If top3 is provided (a list of (word, percent) tuples), it displays the top three words.
+    Otherwise, it displays the single hot word and percentage.
     """
-    if hotword is None:
-        hotword = "N/A"
-
-    # Compute color for the percentage.
-    # For percent=0 -> blue (#0000FF), percent=100 -> red (#FF0000)
-    red = int(255 * (percent / 100))
-    blue = int(255 * (1 - percent / 100))
-    color_percent = f"rgb({red}, 0, {blue})"
+    if top3:
+        rows = ""
+        for w, p in top3:
+            red = int(255 * (p / 70))
+            blue = int(255 * (1 - p / 70))
+            color = f"rgb({red}, 0, {blue})"
+            rows += f"<div><span class='hotword'>{w.upper()}</span> <span class='percent' style='color:{color};'>{p:.1f}%</span></div>\n"
+        card_content = rows
+    else:
+        if hotword is None:
+            hotword = "N/A"
+        red = int(255 * (percent / 70))
+        blue = int(255 * (1 - percent / 70))
+        color = f"rgb({red}, 0, {blue})"
+        card_content = f"<span class='hotword'>{hotword.upper()}</span> <span class='percent'>{percent:.1f}%</span>"
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -53,24 +52,24 @@ def update_hotword_html(hotword, percent):
             font-weight: bold;
         }}
         .percent {{
-            color: {color_percent};
+            color: {color};
             font-weight: bold;
+            text-shadow:
+               1px 1px 0 #FFFFFF,
+             -1px -1px 0 #FFFFFF,  
+              1px -1px 0 #FFFFFF,
+              -1px 1px 0 #FFFFFF,
+               1px 1px 0 #FFFFFF;
         }}
     </style>
 </head>
 <body>
     <div class="card">
-        <span>FIERBINTE</span>
-        <div><span class="hotword">{hotword.upper()}</span> <span class="percent"> {percent:.1f}%</span></div>
+        <span>HOT WORDS</span>
+        {card_content}
     </div>
 </body>
 </html>
 """
     with open("hot-word.html", "w", encoding="utf-8") as f:
         f.write(html)
-
-
-# For quick testing:
-if __name__ == '__main__':
-    update_hotword_html("test", 45.6)
-    print("hot-word.html updated.")
