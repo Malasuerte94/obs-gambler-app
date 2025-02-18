@@ -1,122 +1,190 @@
 import sys
-import json
-import time
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui, QtCore
+from config.settings_manager import SettingsManager
 from tabs.dashboard_tab import DashboardTab
 from tabs.casino_manager_tab import CasinoManagerTab
 from tabs.settings_tab import SettingsTab
 from tabs.youtube_watcher_tab import YouTubeWatcherTab
+from utils.logger import Logger
+
+class CustomTitleBar(QtWidgets.QWidget):
+    """Custom title bar with close and minimize buttons."""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.init_ui()
+
+    def init_ui(self):
+        self.setFixedHeight(40)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(10, 0, 10, 0)
+
+        # Title label
+        self.title_label = QtWidgets.QLabel("Gambler Settings", self)
+        self.title_label.setStyleSheet("color: white; font-size: 14px;")
+        layout.addWidget(self.title_label)
+
+        # Spacer to push buttons to the right
+        layout.addStretch()
+
+        # Minimize button
+        self.minimize_button = QtWidgets.QPushButton("—", self)
+        self.minimize_button.setFixedSize(40, 30)
+        self.minimize_button.clicked.connect(self.parent.showMinimized)
+        self.minimize_button.setStyleSheet(self.button_style())
+
+        # Close button
+        self.close_button = QtWidgets.QPushButton("✕", self)
+        self.close_button.setFixedSize(40, 30)
+        self.close_button.clicked.connect(self.parent.close)
+        self.close_button.setStyleSheet(self.button_style())
+
+        layout.addWidget(self.minimize_button)
+        layout.addWidget(self.close_button)
+
+    def button_style(self):
+        return """
+            QPushButton {
+                background-color: #444;
+                border: none;
+                font-size: 16px;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #666;
+            }
+        """
 
 class GamblerSettingsApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Gambler Settings")
-        self.setGeometry(100, 100, 600, 500)
+
+        # Set dark mode styling
+        self.setStyleSheet(self.dark_theme())
+
+        # Remove window frame and allow dragging
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+        self.setGeometry(100, 100, 1270, 600)
+
+        # Initialize settings manager
+        self.settings = SettingsManager("settings.json")
 
         # Central widget and layout
         self.central_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.central_widget)
         layout = QtWidgets.QVBoxLayout(self.central_widget)
+        layout.setContentsMargins(10, 5, 10, 5)  # Remove extra margins
+
+        # Add custom title bar
+        self.title_bar = CustomTitleBar(self)
+        layout.addWidget(self.title_bar)
+
+        # **Fix: Initialize status_log before creating tabs**
+        self.status_log = Logger()
 
         # Tab control
         self.tab_control = QtWidgets.QTabWidget()
         layout.addWidget(self.tab_control)
 
-        # Shared attributes
-        self.offer_file = ''
-        self.deposit_file = ''
-        self.casino_title_file = ''
-        self.casino_play_image_file = ''
-        self.casino_data = {}
-        self.bot_commands = ["!referral"]
-        self.spin_url = "https://pacanele.catalin-ene.ro/api/spin/12"
-        self.yt_channel = ""
-        self.kick_channel = ""
-        self.youtube_api = ""
-
         # Create tabs
         self.dashboard_tab = DashboardTab(self)
         self.casino_manager_tab = CasinoManagerTab(self)
-        #self.youtube_bot_tab = YouTubeBotTab(self)
         self.youtube_watcher_tab = YouTubeWatcherTab(self)
         self.settings_tab = SettingsTab(self)
 
         # Add tabs to the tab control
         self.tab_control.addTab(self.dashboard_tab, 'Dashboard')
         self.tab_control.addTab(self.casino_manager_tab, 'Casino Manager')
-        #self.tab_control.addTab(self.youtube_bot_tab, 'YouTube Bot')
         self.tab_control.addTab(self.youtube_watcher_tab, 'YouTube Watcher')
         self.tab_control.addTab(self.settings_tab, 'Settings')
-
-        # Status log textbox (smaller: approx 5 text rows)
-        self.status_log = QtWidgets.QTextEdit()
-        self.status_log.setReadOnly(True)
-        self.status_log.setFixedHeight(100)  # Adjust height as needed
         layout.addWidget(self.status_log)
+        # Enable window dragging
+        self.drag_pos = None
 
-        # Load settings from file
+        # Load settings
         self.load_settings()
+
+    def mousePressEvent(self, event):
+        """Allow window dragging when clicking the title bar."""
+        if event.button() == QtCore.Qt.LeftButton:
+            self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        """Move window while dragging."""
+        if self.drag_pos is not None:
+            self.move(event.globalPos() - self.drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        """Reset drag position after releasing mouse."""
+        self.drag_pos = None
 
     def log_status(self, message):
         """Log a status message to the status log textbox."""
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.status_log.append(f"[{timestamp}] {message}")
-
-    def save_settings(self):
-        # Save all global settings to settings.json
-        settings = {
-            'offer_file': self.offer_file,
-            'deposit_file': self.deposit_file,
-            'casinos': self.casino_data,
-            'casino_title_file': self.casino_title_file,
-            'casino_play_image_file': self.casino_play_image_file,
-            'oauth_port': self.settings_tab.oauth_port.text(),
-            'channel_id': self.settings_tab.channel_id.text(),
-            'bot_commands': self.bot_commands,
-            'spin_url': self.spin_url,
-            'yt_channel': self.yt_channel,
-            'kick_channel': self.kick_channel,
-            'youtube_api': self.youtube_api,
-        }
-        with open('settings.json', 'w') as json_file:
-            json.dump(settings, json_file, indent=4)
-
-        # Reload settings in all tabs
-        self.load_settings()
-
-        # Log success message
-        self.log_status("All settings saved successfully!")
+        self.status_log.append_message(message)
 
     def load_settings(self):
-        try:
-            with open('settings.json', 'r') as json_file:
-                settings = json.load(json_file)
+        settings = self.settings.load()
+        self.dashboard_tab.load_settings(settings)
+        self.youtube_watcher_tab.load_settings(settings)
+        self.settings_tab.load_settings(settings)
+        self.log_status("Settings loaded successfully.")
 
-            # Load global settings
-            self.offer_file = settings.get('offer_file', '')
-            self.deposit_file = settings.get('deposit_file', '')
-            self.casino_data = settings.get('casinos', {})
-            self.casino_title_file = settings.get('casino_title_file', '')
-            self.casino_play_image_file = settings.get('casino_play_image_file', '')
-            self.bot_commands = settings.get('bot_commands', ["!referral"])
-            self.spin_url = settings.get('spin_url', "https://pacanele.catalin-ene.ro/api/spin/12")
-            self.yt_channel = settings.get('channel_id', "")
-            self.kick_channel = settings.get('kick_channel', "")
-            self.youtube_api = settings.get('youtube_api', "")
+    def save_settings(self):
+        self.settings.save(self.settings_tab.get_settings())
+        self.log_status("Settings saved successfully!")
 
-            # Pass settings to tabs
-            self.settings_tab.load_settings(settings)
-            #self.youtube_bot_tab.load_settings(settings)
-            self.casino_manager_tab.load_casinos(self.casino_data)
-            self.youtube_watcher_tab.load_settings(self.youtube_api, self.yt_channel)
-            self.dashboard_tab.load_casinos(self.casino_data)
-            self.dashboard_tab.load_config()
-
-            # Log success message
-            self.log_status("Settings loaded successfully.")
-
-        except FileNotFoundError:
-            self.log_status("No settings file found. Starting with default settings.")
+    def dark_theme(self):
+        """Returns the dark mode stylesheet."""
+        return """
+        QWidget {
+            background-color: #222;
+            color: white;
+        }
+        QTabWidget::pane {
+            border: 1px solid #444;
+        }
+        QTabBar::tab {
+            background: #333;
+            padding: 10px;
+        }
+        QTabBar::tab:selected {
+            background: #555;
+        }
+        QTextEdit {
+            background: #333;
+            color: white;
+            border: 1px solid #444;
+        }
+        QPushButton {
+            background: #444;
+            border: none;
+            padding: 8px;
+            color: white;
+        }
+        QPushButton:hover {
+            background: #666;
+        }
+        QLineEdit {
+            background: #333;
+            border: 1px solid #555;
+            padding: 4px;
+            color: white;
+        }
+        QComboBox {
+            background: #333;
+            border: 1px solid #555;
+            padding: 4px;
+            color: white;
+        }
+        QLabel {
+            color: white;
+        }
+        """
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)

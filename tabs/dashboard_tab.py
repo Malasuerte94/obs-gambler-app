@@ -1,8 +1,8 @@
 import os
-from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QMessageBox
-import requests
 
+import requests
+from PyQt5 import QtWidgets
+from utils.api_client import APIClient  # Import API Client to fetch casinos
 
 class DashboardTab(QtWidgets.QWidget):
     def __init__(self, parent):
@@ -23,6 +23,11 @@ class DashboardTab(QtWidgets.QWidget):
         self.casino_selector = QtWidgets.QComboBox()
         layout.addWidget(self.casino_selector, 0, 1)
 
+        # Refresh button for casino list
+        refresh_button = QtWidgets.QPushButton("🔄 Refresh Casinos")
+        refresh_button.clicked.connect(self.load_casinos_from_api)
+        layout.addWidget(refresh_button, 0, 2)
+
         # Deposit Amount Input
         layout.addWidget(QtWidgets.QLabel("Deposit Amount:"), 2, 0)
         self.deposit_entry = QtWidgets.QLineEdit()
@@ -38,80 +43,126 @@ class DashboardTab(QtWidgets.QWidget):
         spin_button.clicked.connect(self.trigger_spin)
         layout.addWidget(spin_button, 4, 1)
 
-    def load_casinos(self, casinos):
-        """Load casinos into the casino selector."""
+        # Load casino list from API
+        self.load_casinos_from_api()
+
+    def load_casinos_from_api(self):
+        """Fetch the casino list from API and populate the dropdown."""
         self.casino_selector.clear()
-        for casino_name in casinos.keys():
-            self.casino_selector.addItem(casino_name)
+        response = APIClient.get("get-casinos")  # API call
 
-    def load_config(self):
-        """Load dashboard-specific settings from files."""
-        try:
-            # Load offer text
-            if os.path.exists(self.parent.offer_file):
-                with open(self.parent.offer_file, 'r') as file:
-                    offer_text = file.read().strip()
-                    self.offer_title.setPlainText(offer_text)
+        if not response or "casinos" not in response:
+            self.parent.log_status("Error: Unable to fetch casinos from API.")
+            return
 
-            # Load deposit amount
-            if os.path.exists(self.parent.deposit_file):
-                with open(self.parent.deposit_file, 'r') as file:
-                    deposit_amount = file.read().strip()
-                    self.deposit_entry.setText(deposit_amount)
+        casinos = response["casinos"]
+        for casino in casinos:
+            self.casino_selector.addItem(casino["name"])
 
-            # Load selected casino title
-            if os.path.exists(self.parent.casino_title_file):
-                with open(self.parent.casino_title_file, 'r') as file:
-                    selected_casino = file.read().strip()
-                    index = self.casino_selector.findText(selected_casino)
-                    if index >= 0:
-                        self.casino_selector.setCurrentIndex(index)
+        self.parent.log_status("Casino list updated successfully.")
 
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load dashboard configuration: {e}")
+    def load_settings(self, settings):
+        """Load settings and update UI elements with actual file contents."""
+
+        # Load offer file path from settings
+        offer_file = settings.get('offer_file', '')
+        if offer_file and os.path.exists(offer_file):
+            try:
+                with open(offer_file, "r") as f:
+                    self.offer_title.setPlainText(f.read().strip())
+            except Exception as e:
+                self.parent.log_status(f"Error reading offer file: {e}")
+        else:
+            self.parent.log_status("Offer file not found. Set it in the Settings tab.")
+
+        # Load deposit file path from settings
+        deposit_file = settings.get('deposit_file', '')
+        if deposit_file and os.path.exists(deposit_file):
+            try:
+                with open(deposit_file, "r") as f:
+                    self.deposit_entry.setText(f.read().strip())
+            except Exception as e:
+                self.parent.log_status(f"Error reading deposit file: {e}")
+        else:
+            self.parent.log_status("Deposit file not found. Set it in the Settings tab.")
+
+        # Load casinos from API
+        self.load_casinos_from_api()
+
+    import requests
 
     def save_config(self):
-        # Validate inputs
-        if not self.parent.offer_file or not self.parent.deposit_file or not self.parent.casino_title_file:
-            self.parent.log_status("Failed to save dashboard configuration: Please complete all fields in the Settings tab.")
+        """Save the offer and deposit values and download the selected casino's logo."""
+
+        # Load the offer and deposit file paths from settings
+        offer_file = self.parent.settings.get("offer_file", "")
+        deposit_file = self.parent.settings.get("deposit_file", "")
+        selected_casino = self.casino_selector.currentText()
+
+        # Validate that the paths exist before writing
+        if not offer_file or not deposit_file or not selected_casino:
+            self.parent.log_status("Error: Offer file, deposit file, or casino selection missing.")
             return
 
-        # Save offer text
         try:
-            with open(self.parent.offer_file, "w") as f:
+            # Save the offer text inside the offer file
+            with open(offer_file, "w") as f:
                 f.write(self.offer_title.toPlainText().strip())
         except Exception as e:
-            self.parent.log_status(f"Failed to save offer file: {e}")
+            self.parent.log_status(f"Failed to save offer: {e}")
             return
 
-        # Save deposit amount
         try:
-            deposit_amount = self.deposit_entry.text().strip()
-            if not deposit_amount:
-                raise ValueError("Deposit amount cannot be empty.")
-            with open(self.parent.deposit_file, "w") as f:
-                f.write(deposit_amount)
+            # Save the deposit amount inside the deposit file
+            with open(deposit_file, "w") as f:
+                f.write(self.deposit_entry.text().strip())
         except Exception as e:
-            self.parent.log_status(f"Failed to save deposit file: {e}")
+            self.parent.log_status(f"Failed to save deposit: {e}")
             return
 
-        # Save selected casino title
+        # Fetch selected casino details from the API
+        response = APIClient.get("get-casinos")
+        if not response or "casinos" not in response:
+            self.parent.log_status("Error: Unable to fetch casinos from API.")
+            return
+
+        casinos = response["casinos"]
+        selected_casino_data = next((c for c in casinos if c["name"] == selected_casino), None)
+
+        if not selected_casino_data or "logo" not in selected_casino_data:
+            self.parent.log_status("Error: Casino logo not found.")
+            return
+
+        logo_url = selected_casino_data["logo"]  # Casino logo URL from API
+
+        # Download and save the casino logo as play_on_casino.png
         try:
-            selected_casino = self.casino_selector.currentText()
-            if not selected_casino:
-                raise ValueError("No casino selected.")
-            with open(self.parent.casino_title_file, "w") as f:
-                f.write(selected_casino)
-        except Exception as e:
-            self.parent.log_status(f"Failed to save casino title file: {e}")
-            return
+            logo_response = requests.get(logo_url, stream=True)
+            logo_response.raise_for_status()
 
-        # Log success message
-        self.parent.log_status("Dashboard configuration saved successfully.")
+            with open("play_on_casino.png", "wb") as file:
+                for chunk in logo_response.iter_content(1024):
+                    file.write(chunk)
+
+            self.parent.log_status(f"Casino image saved as play_on_casino.png")
+
+        except Exception as e:
+            self.parent.log_status(f"Error: Failed to download casino logo - {e}")
+
+        # Save selected casino in settings
+        self.parent.settings.set("selected_casino", selected_casino)
+        self.parent.log_status(f"Dashboard settings saved successfully. Selected Casino: {selected_casino}")
 
     def trigger_spin(self):
+        """Send a request to trigger a spin."""
+        spin_url = self.parent.settings.get("spin_url", "")
+        if not spin_url:
+            self.parent.log_status("Spin URL not configured.")
+            return
+
         try:
-            response = requests.get(self.parent.spin_url)
-            self.parent.log_status(f"Spin request sent to {self.parent.spin_url}. Response: {response.status_code}")
+            import requests
+            response = requests.get(spin_url)
+            self.parent.log_status(f"Spin request sent. Response: {response.status_code}")
         except Exception as e:
             self.parent.log_status(f"Failed to send spin request: {e}")

@@ -1,5 +1,5 @@
 # Ignore client_secret.json and other sensitive files
-client_secret.json
+EXTAS/client_secret.json
 .env
 config.json
 credentials.json
@@ -62,3 +62,5 @@ MANIFEST
 *.so
 
 settings.json
+/EXTAS
+/EXTAS/*
