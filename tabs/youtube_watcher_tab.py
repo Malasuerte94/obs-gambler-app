@@ -2,7 +2,7 @@ import datetime
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hotword, analyze_top_words
+from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hot_message, analyze_top_messages
 from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
 
 
@@ -192,14 +192,14 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                 return
 
             if self.top3_checkbox.isChecked():
-                top3 = analyze_top_words(messages, top_n=3)
+                top3 = analyze_top_messages(messages, top_n=3)
                 if top3:
                     self.hotword_label.setText(f"TOP 3: {', '.join([word for word, _ in top3])}")
                     update_hotword_html(None, None, top3=top3)
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
             else:
-                hotword, percent = analyze_hotword(messages)
+                hotword, percent = analyze_hot_message(messages)
 
                 if hotword:
                     self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")

@@ -8,7 +8,7 @@ class APIClient:
     if is_dev():
         BASE_URL = "http://127.0.0.1:8000/api/"
     else:
-        BASE_URL = "https://pacanele.catalin-ene.ro/api/"
+        BASE_URL = "https://casinolabs.ro/api/"
 
     @classmethod
     def set_base_url(cls, url):

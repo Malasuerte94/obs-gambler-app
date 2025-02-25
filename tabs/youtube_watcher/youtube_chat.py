@@ -30,62 +30,67 @@ def get_live_video_id(yt_channel, api_key):
         return None
 
 
-def analyze_hotword(chat_messages):
-    """Analyze chat messages and return the most frequent hotword."""
+def analyze_hot_message(chat_messages):
+    """
+    Analyze chat messages and return the single most frequently repeated message
+    ("hot message") and the percentage of messages that match it.
+    """
+    # Use the last 200 messages if available, else the last 100.
     messages = chat_messages[-200:] if len(chat_messages) >= 200 else chat_messages[-100:]
-    word_occurrence = {}
+    message_occurrence = {}
 
+    # Count frequency based on a normalized (lowercase and stripped) version of the message.
     for msg in messages:
-        words = {w for w in msg.lower().split() if len(w) > 1 and w not in STOP_WORDS}
-        for w in words:
-            word_occurrence[w] = word_occurrence.get(w, 0) + 1
+        normalized = msg.strip().lower()
+        message_occurrence[normalized] = message_occurrence.get(normalized, 0) + 1
 
-    # Find the most common word (must appear in at least 5 messages)
-    candidates = {w: cnt for w, cnt in word_occurrence.items() if cnt >= 2}
+    # Consider only messages that appear at least 2 times.
+    candidates = {m: count for m, count in message_occurrence.items() if count >= 2}
     if not candidates:
         return None, 0.0
 
-    hotword = max(candidates, key=lambda w: candidates[w])
-
-    # Calculate percentage of messages containing the hotword
-    count = sum(1 for msg in messages if hotword in msg.lower())
+    # Find the most frequent message.
+    hot_message_normalized = max(candidates, key=lambda m: candidates[m])
+    count = candidates[hot_message_normalized]
     percent = (count / len(messages)) * 100
 
-    return hotword, percent
+    # Retrieve the original version (with original case) from messages.
+    for msg in messages:
+        if msg.strip().lower() == hot_message_normalized:
+            return msg, percent
+
+    return None, 0.0
 
 
-def analyze_top_words(chat_messages, top_n=3):
-    """Analyze chat messages and return the top_n most frequent words."""
+def analyze_top_messages(chat_messages, top_n=3):
+    """
+    Analyze chat messages and return the top_n most frequently repeated messages.
+    Each item in the returned list is a tuple: (message, percentage)
+    """
     messages = chat_messages[-200:] if len(chat_messages) >= 200 else chat_messages[-100:]
-    word_occurrence = {}
+    message_occurrence = {}
 
     for msg in messages:
-        try:
-            words = {w for w in msg.lower().split() if len(w) > 1 and w not in STOP_WORDS}
-            for w in words:
-                word_occurrence[w] = word_occurrence.get(w, 0) + 1
+        normalized = msg.strip().lower()
+        message_occurrence[normalized] = message_occurrence.get(normalized, 0) + 1
 
-        except Exception as e:
-            print(f"Error processing message: '{msg}', Error: {e}")
-            continue  # Skip problematic messages
-
-    # Find the most common words (must appear in at least 2 messages)
-    candidates = {w: cnt for w, cnt in word_occurrence.items() if cnt >= 2}
+    # Only consider messages that appear at least twice.
+    candidates = {m: count for m, count in message_occurrence.items() if count >= 2}
     if not candidates:
         return []
 
-    sorted_candidates = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
+    # Sort messages by frequency in descending order.
+    sorted_candidates = sorted(candidates.items(), key=lambda item: item[1], reverse=True)
+    top_messages = []
 
-    top_words = []
-    for w, cnt in sorted_candidates[:top_n]:
-        try:
-            count = sum(1 for msg in messages if w in msg.lower())
-            percent = (count / len(messages)) * 100
-            top_words.append((w, percent))
-        except Exception as e:
-            print(f"Error processing word '{w}': {e}")
-            continue
+    for normalized_msg, count in sorted_candidates[:top_n]:
+        percent = (count / len(messages)) * 100
+        # Retrieve the original version from the messages list.
+        for msg in messages:
+            if msg.strip().lower() == normalized_msg:
+                top_messages.append((msg, percent))
+                break
 
-    return top_words
+    return top_messages
 
 
