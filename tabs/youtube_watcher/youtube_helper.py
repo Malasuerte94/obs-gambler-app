@@ -21,6 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger('YouTubeHelper')
 DB_FILE = "youtube_chat.db"
 
+
 class YouTubeChatTracker:
     def __init__(self, settings, db_file=DB_FILE):
         self.settings = settings
@@ -32,6 +33,8 @@ class YouTubeChatTracker:
         self.conn = None
         self.cursor = None
         self.reset_database()
+        self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                              user.strip()]
 
     def reset_database(self):
         logger.info(f"Creating fresh database: {self.db_file}")
@@ -82,7 +85,9 @@ class YouTubeChatTracker:
             raise
 
     def add_message(self, message_id, user_id, message, is_member, timestamp=None):
-        if user_id in self.settings.get('ignored_users', '').split(','):
+        self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                              user.strip()]
+        if user_id in self.ignored_users:
             logger.debug(f"Ignoring message from {user_id} (in ignored users list)")
             return True
         logger.debug(f"Adding message from {user_id}: {message[:20]}...")
@@ -152,7 +157,6 @@ class YouTubeChatTracker:
             current_time = time.time()
             time_since_last_award = current_time - self.last_points_award_time
 
-            # Check if we should award points based on time interval
             if not force and time_since_last_award < self.points_award_interval:
                 logger.debug(
                     f"Skipping points award - next award in {self.points_award_interval - time_since_last_award:.1f} seconds")
@@ -169,7 +173,6 @@ class YouTubeChatTracker:
             result = award_points(user_ids, points, self.settings.get('streamer_id'), self.api_client)
 
             if result:
-                # Update the last award time only if successful
                 self.last_points_award_time = current_time
 
             return result
@@ -182,9 +185,18 @@ class YouTubeChatTracker:
         logger.debug("Getting active users")
         try:
             self.process_timeouts()
-            self.cursor.execute(
-                "SELECT user_id, last_activity, message_count, is_member FROM users WHERE is_active = 1"
-            )
+            self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                                  user.strip()]
+            ignored_placeholders = ','.join(['?'] * len(self.ignored_users)) if self.ignored_users else "''"
+            query = "SELECT user_id, last_activity, message_count, is_member FROM users WHERE is_active = 1"
+            if self.ignored_users:
+                query += f" AND user_id NOT IN ({ignored_placeholders})"
+
+            if self.ignored_users:
+                self.cursor.execute(query, self.ignored_users)
+            else:
+                self.cursor.execute(query)
+
             users = self.cursor.fetchall()
             logger.debug(f"Found {len(users)} active users")
             return users
@@ -196,9 +208,18 @@ class YouTubeChatTracker:
         logger.debug("Getting inactive users")
         try:
             self.process_timeouts()
-            self.cursor.execute(
-                "SELECT user_id, last_activity, message_count, is_member FROM users WHERE is_active = 0"
-            )
+            self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                                  user.strip()]
+            ignored_placeholders = ','.join(['?'] * len(self.ignored_users)) if self.ignored_users else "''"
+            query = "SELECT user_id, last_activity, message_count, is_member FROM users WHERE is_active = 0"
+            if self.ignored_users:
+                query += f" AND user_id NOT IN ({ignored_placeholders})"
+
+            if self.ignored_users:
+                self.cursor.execute(query, self.ignored_users)
+            else:
+                self.cursor.execute(query)
+
             users = self.cursor.fetchall()
             logger.debug(f"Found {len(users)} inactive users")
             return users
@@ -209,10 +230,19 @@ class YouTubeChatTracker:
     def get_all_messages(self, limit=1000):
         logger.debug(f"Getting all messages (limit: {limit})")
         try:
-            self.cursor.execute(
-                "SELECT message_id, user_id, message, is_member, timestamp FROM messages ORDER BY timestamp DESC LIMIT ?",
-                (limit,)
-            )
+            self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                                  user.strip()]
+            ignored_placeholders = ','.join(['?'] * len(self.ignored_users)) if self.ignored_users else "''"
+            query = "SELECT message_id, user_id, message, is_member, timestamp FROM messages"
+            if self.ignored_users:
+                query += f" WHERE user_id NOT IN ({ignored_placeholders})"
+            query += " ORDER BY timestamp DESC LIMIT ?"
+
+            if self.ignored_users:
+                self.cursor.execute(query, self.ignored_users + [limit])
+            else:
+                self.cursor.execute(query, [limit])
+
             return self.cursor.fetchall()
         except Exception as e:
             logger.error(f"Error getting messages: {e}", exc_info=True)
@@ -222,7 +252,18 @@ class YouTubeChatTracker:
         logger.debug("Getting active user count")
         try:
             self.process_timeouts()
-            self.cursor.execute("SELECT COUNT(*) FROM users WHERE is_active = 1")
+            self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                                  user.strip()]
+            ignored_placeholders = ','.join(['?'] * len(self.ignored_users)) if self.ignored_users else "''"
+            query = "SELECT COUNT(*) FROM users WHERE is_active = 1"
+            if self.ignored_users:
+                query += f" AND user_id NOT IN ({ignored_placeholders})"
+
+            if self.ignored_users:
+                self.cursor.execute(query, self.ignored_users)
+            else:
+                self.cursor.execute(query)
+
             count = self.cursor.fetchone()[0]
             logger.debug(f"Active user count: {count}")
             return count
@@ -232,7 +273,18 @@ class YouTubeChatTracker:
 
     def get_total_users(self):
         try:
-            self.cursor.execute("SELECT COUNT(*) FROM users")
+            self.ignored_users = [user.strip() for user in self.settings.get('ignored_users', '').split(',') if
+                                  user.strip()]
+            ignored_placeholders = ','.join(['?'] * len(self.ignored_users)) if self.ignored_users else "''"
+            query = "SELECT COUNT(*) FROM users"
+            if self.ignored_users:
+                query += f" WHERE user_id NOT IN ({ignored_placeholders})"
+
+            if self.ignored_users:
+                self.cursor.execute(query, self.ignored_users)
+            else:
+                self.cursor.execute(query)
+
             return self.cursor.fetchone()[0]
         except Exception as e:
             logger.error(f"Error getting total users: {e}", exc_info=True)

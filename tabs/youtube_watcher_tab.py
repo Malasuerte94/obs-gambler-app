@@ -12,7 +12,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         super().__init__()
         self.parent = parent
         self.parent.log_status("Initializing YouTubeWatcherTab")
-        self.ignored_users = self.parent.settings.get('ignored_users', '').split(',')
+        self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if user.strip()]
         try:
             self.chat_tracker = YouTubeChatTracker(parent.settings)
             self.parent.log_status("Chat tracker initialized successfully")
@@ -42,7 +42,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.timeout_label.setStyleSheet("font-size: 9pt;")
 
         self.ignored_label = QtWidgets.QLabel(
-            f"Ignored: {', '.join(self.parent.settings.get('ignored_users', '').split(','))}")
+            f"Ignored: {', '.join(self.ignored_users)}")
         self.ignored_label.setAlignment(QtCore.Qt.AlignCenter)
         self.ignored_label.setWordWrap(True)
         self.ignored_label.setStyleSheet("font-size: 9pt;")
@@ -91,7 +91,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         try:
             active_count = self.chat_tracker.get_active_count()
             self.active_users_label.setText(f"Active Users: {active_count}")
-            self.parent.log_status(f"Updated active users count: {active_count}")
         except Exception as e:
             self.parent.log_status(f"Error updating user stats: {e}", exc_info=True)
 
@@ -138,6 +137,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             if result is not None:
                 new_msgs = result.split("\n")
                 new_msg_count = 0
+                self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if user.strip()]
                 for msg in new_msgs:
                     parts = msg.split("||")
                     if len(parts) == 4:
@@ -208,6 +208,8 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
     def load_settings(self):
         self.parent.log_status("Loading Youtube Watcher settings")
         try:
+            self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if user.strip()]
+            self.ignored_label.setText(f"Ignored: {', '.join(self.ignored_users)}")
             youtube_api = self.parent.settings.get("youtube_api", "")
             yt_channel = self.parent.settings.get("yt_channel", "")
             self.parent.log_status(f"Checking live stream for channel: {yt_channel}")
