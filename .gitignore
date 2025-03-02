@@ -1,5 +1,5 @@
 # Ignore client_secret.json and other sensitive files
-client_secret.json
+EXTAS/client_secret.json
 .env
 config.json
 credentials.json
@@ -60,3 +60,10 @@ MANIFEST
 # Ignore compiled Cython files
 *.c
 *.so
+
+settings.json
+/EXTAS
+/EXTAS/*
+hot-word.html
+play_on_casino.png
+/tabs/test.py
