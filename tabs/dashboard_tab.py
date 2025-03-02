@@ -46,10 +46,6 @@ class DashboardTab(QtWidgets.QWidget):
         spin_button.clicked.connect(self.trigger_spin)
         layout.addWidget(spin_button, 4, 1)
 
-        self.load_settings()
-        # Load casino list from API
-        self.load_casinos_from_api()
-
     def load_casinos_from_api(self):
         """Fetch the casino list from API and populate the dropdown."""
         self.casino_selector.clear()

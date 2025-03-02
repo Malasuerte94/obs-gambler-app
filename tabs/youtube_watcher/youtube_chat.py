@@ -8,7 +8,6 @@ def get_live_video_id(yt_channel, api_key):
     if is_dev():
         return 's-lSqAZeBe0'
     else:
-        # if mode is dev
         """
         Check if the given channel is live and return the live video ID.
         If no live stream is found, returns None.

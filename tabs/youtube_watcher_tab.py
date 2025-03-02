@@ -14,8 +14,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         super().__init__()
         logger.info("Initializing YouTubeWatcherTab")
         self.parent = parent
-        self.settings = parent.settings
-        self.ignored_users = self.settings.get('ignored_users', '').split(',')
+        self.ignored_users = self.parent.settings.get('ignored_users', '').split(',')
         try:
             self.chat_tracker = YouTubeChatTracker(parent.settings)
             logger.info("Chat tracker initialized successfully")
@@ -36,10 +35,10 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.active_users_label = QtWidgets.QLabel("Active Users: 0")
         self.active_users_label.setAlignment(QtCore.Qt.AlignCenter)
         self.active_users_label.setStyleSheet("font-size: 9pt;")
-        self.timeout_label = QtWidgets.QLabel(f"Timeout: {int(self.settings.get('chat_interval', 1)) * 60} minutes")
+        self.timeout_label = QtWidgets.QLabel(f"Timeout: {int(self.parent.settings.get('chat_interval', 1))} minutes")
         self.timeout_label.setAlignment(QtCore.Qt.AlignCenter)
         self.timeout_label.setStyleSheet("font-size: 9pt;")
-        self.ignored_label = QtWidgets.QLabel(f"Ignored: {', '.join(self.settings.get('ignored_users', '').split(','))}")
+        self.ignored_label = QtWidgets.QLabel(f"Ignored: {', '.join(self.parent.settings.get('ignored_users', '').split(','))}")
         self.ignored_label.setAlignment(QtCore.Qt.AlignCenter)
         self.ignored_label.setWordWrap(True)
         self.ignored_label.setStyleSheet("font-size: 9pt;")
@@ -107,6 +106,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.stats_timer.timeout.connect(self.update_user_stats)
         self.stats_timer.start(5000)
         logger.info("YouTubeWatcherTab initialization complete")
+        self.load_settings()
 
     def apply_web_styles(self, success):
         if success:
@@ -279,13 +279,11 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             logger.error(f"Unexpected error in update_hotwords: {e}", exc_info=True)
             self.parent.log_status(f"Unexpected error in update_hotwords: {e}")
 
-    def load_settings(self, settings):
-        logger.info("Loading settings")
+    def load_settings(self):
+        logger.info("Loading Youtube Watcher settings")
         try:
-            youtube_api = settings.get("youtube_api", "")
-            yt_channel = settings.get("yt_channel", "")
-            self.youtube_api = youtube_api
-            self.yt_channel = yt_channel
+            youtube_api = self.parent.settings.get("youtube_api", "")
+            yt_channel = self.parent.settings.get("yt_channel", "")
             self.chat_table.setRowCount(0)
             self.parent.log_status("Checking for live stream on channel: " + yt_channel)
             logger.info(f"Checking live stream for channel: {yt_channel}")
