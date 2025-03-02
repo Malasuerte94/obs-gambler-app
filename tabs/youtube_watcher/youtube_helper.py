@@ -3,6 +3,8 @@ import time
 import datetime
 import os
 import logging
+
+from utils.api_client import APIClient
 from utils.api_points import award_points
 
 LOG_FILE = 'youtube_helper.log'
@@ -15,21 +17,18 @@ logging.basicConfig(
     filename='youtube_helper.log',
     filemode='a'
 )
+
 logger = logging.getLogger('YouTubeHelper')
-
-INACTIVE_TIMEOUT_MINUTES = 1
 DB_FILE = "youtube_chat.db"
-IGNORED_USERS = ["Nightbot"]
-DEFAULT_POINTS = 1
-
 
 class YouTubeChatTracker:
-    def __init__(self, db_file=DB_FILE, inactive_timeout=INACTIVE_TIMEOUT_MINUTES):
-        logger.info(f"Initializing YouTubeChatTracker with timeout: {inactive_timeout} min, db: {db_file}")
+    def __init__(self, settings, db_file=DB_FILE):
+        self.settings = settings
+        self.api_client = APIClient(settings)
+        self.inactive_timeout = int(self.settings.get('chat_interval', 1)) * 60
         self.db_file = db_file
         self.last_points_award_time = 0
         self.points_award_interval = 60 #here custom
-        self.inactive_timeout = inactive_timeout * 60
         self.conn = None
         self.cursor = None
         self.reset_database()
@@ -83,7 +82,7 @@ class YouTubeChatTracker:
             raise
 
     def add_message(self, message_id, user_id, message, is_member, timestamp=None):
-        if user_id in IGNORED_USERS:
+        if user_id in self.settings.get('ignored_users', '').split(','):
             logger.debug(f"Ignoring message from {user_id} (in ignored users list)")
             return True
         logger.debug(f"Adding message from {user_id}: {message[:20]}...")
@@ -147,14 +146,8 @@ class YouTubeChatTracker:
             logger.error(f"Error processing timeouts: {e}", exc_info=True)
             return []
 
-    def award_points_to_active_users(self, points=DEFAULT_POINTS, force=False):
-        """
-        Award points to active users at specified intervals
-
-        Args:
-            points: Number of points to award
-            force: If True, award points regardless of the time interval
-        """
+    def award_points_to_active_users(self, force=False):
+        points = int(self.settings.get('chat_points', 1))
         try:
             current_time = time.time()
             time_since_last_award = current_time - self.last_points_award_time
@@ -173,7 +166,7 @@ class YouTubeChatTracker:
             user_ids = [user[0] for user in active_users]
             logger.info(f"Awarding {points} points to {len(user_ids)} active users")
 
-            result = award_points(user_ids, points)
+            result = award_points(user_ids, points, self.settings.get('streamer_id'), self.api_client)
 
             if result:
                 # Update the last award time only if successful

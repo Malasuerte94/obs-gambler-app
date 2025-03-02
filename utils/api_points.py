@@ -3,11 +3,7 @@ from utils.api_client import APIClient
 
 logger = logging.getLogger('APIPoints')
 
-STREAMER_ID = 1
-DEFAULT_POINTS = 1
-
-
-def award_points(user_ids, points=DEFAULT_POINTS, streamer_id=STREAMER_ID):
+def award_points(user_ids, points, streamer_id, api_client):
     if not user_ids:
         logger.info("No users to award points")
         return False
@@ -22,21 +18,14 @@ def award_points(user_ids, points=DEFAULT_POINTS, streamer_id=STREAMER_ID):
 
     try:
         endpoint = "add-users-points"
+        response = api_client.post(endpoint, json=data)
 
-        # Use the json parameter instead of data
-        import requests
-        response = requests.post(
-            f"{APIClient.BASE_URL}{endpoint}",
-            json=data,  # Use json parameter to ensure proper JSON formatting
-            headers={'Content-Type': 'application/json'}
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            logger.info(f"Successfully awarded points. Response: {result}")
+        if response and "error" not in response:
+            logger.info(f"Successfully awarded points. Response: {response}")
             return True
         else:
-            logger.error(f"Failed to award points. Status: {response.status_code}, Response: {response.text}")
+            error_message = response.get("error", "Unknown error") if response else "Empty response"
+            logger.error(f"Failed to award points. Error: {error_message}")
             return False
     except Exception as e:
         logger.error(f"API request error when awarding points: {e}", exc_info=True)

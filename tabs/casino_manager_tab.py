@@ -8,6 +8,7 @@ class CasinoManagerTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.api_client = APIClient(parent.settings)
         self.init_ui()
 
     def init_ui(self):
@@ -87,7 +88,7 @@ class CasinoManagerTab(QtWidgets.QWidget):
                 files = {"image": (os.path.basename(logo_path), logo_file, "image/png")}
                 data = {"name": name, "url": url}
 
-                response = APIClient.post("add-casino", data=data, files=files)
+                response = self.api_client.post("add-casino", data=data, files=files)
 
             # Handle cases where response is None
             if response is None:
@@ -113,7 +114,7 @@ class CasinoManagerTab(QtWidgets.QWidget):
         """Fetch the list of casinos from the API and populate the table with images."""
         self.casino_table.setRowCount(0)  # Clear previous table content
 
-        response = APIClient.get("get-casinos")
+        response = self.api_client.get("get-casinos")
         if not response:
             self.parent.log_status("Error: Unable to fetch casinos from API.")
             return
