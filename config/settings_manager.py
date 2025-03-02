@@ -9,7 +9,6 @@ class SettingsManager:
         self.settings = {}
 
     def load(self):
-        """Load settings from a JSON file. If the file does not exist, return default settings."""
         if os.path.exists(self.filename):
             try:
                 with open(self.filename, "r") as file:

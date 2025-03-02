@@ -7,8 +7,8 @@ from tabs.settings_tab import SettingsTab
 from tabs.youtube_watcher_tab import YouTubeWatcherTab
 from utils.logger import Logger
 
+
 class CustomTitleBar(QtWidgets.QWidget):
-    """Custom title bar with close and minimize buttons."""
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -20,21 +20,17 @@ class CustomTitleBar(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(10, 0, 10, 0)
 
-        # Title label
         self.title_label = QtWidgets.QLabel("Gambler Settings", self)
         self.title_label.setStyleSheet("color: white; font-size: 14px;")
         layout.addWidget(self.title_label)
 
-        # Spacer to push buttons to the right
         layout.addStretch()
 
-        # Minimize button
         self.minimize_button = QtWidgets.QPushButton("—", self)
         self.minimize_button.setFixedSize(40, 30)
         self.minimize_button.clicked.connect(self.parent.showMinimized)
         self.minimize_button.setStyleSheet(self.button_style())
 
-        # Close button
         self.close_button = QtWidgets.QPushButton("✕", self)
         self.close_button.setFixedSize(40, 30)
         self.close_button.clicked.connect(self.parent.close)
@@ -56,90 +52,63 @@ class CustomTitleBar(QtWidgets.QWidget):
             }
         """
 
+
 class GamblerSettingsApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Set dark mode styling
         self.setStyleSheet(self.dark_theme())
-
-        # Remove window frame and allow dragging
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.setGeometry(100, 100, 1270, 600)
 
-        # Initialize settings manager
-        self.settings = SettingsManager("settings.json")
+        self.settings_manager = SettingsManager("settings.json")
+        self.settings = self.settings_manager.load()
 
-        # Central widget and layout
         self.central_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.central_widget)
         layout = QtWidgets.QVBoxLayout(self.central_widget)
-        layout.setContentsMargins(10, 5, 10, 5)  # Remove extra margins
+        layout.setContentsMargins(10, 5, 10, 5)
 
-        # Add custom title bar
         self.title_bar = CustomTitleBar(self)
         layout.addWidget(self.title_bar)
 
-        # **Fix: Initialize status_log before creating tabs**
         self.status_log = Logger()
 
-        # Tab control
         self.tab_control = QtWidgets.QTabWidget()
         layout.addWidget(self.tab_control)
 
-        # Create tabs
         self.dashboard_tab = DashboardTab(self)
         self.casino_manager_tab = CasinoManagerTab(self)
         self.youtube_watcher_tab = YouTubeWatcherTab(self)
         self.settings_tab = SettingsTab(self)
 
-        # Add tabs to the tab control
         self.tab_control.addTab(self.dashboard_tab, 'Dashboard')
         self.tab_control.addTab(self.casino_manager_tab, 'Casino Manager')
         self.tab_control.addTab(self.youtube_watcher_tab, 'YouTube Watcher')
         self.tab_control.addTab(self.settings_tab, 'Settings')
         layout.addWidget(self.status_log)
-        # Enable window dragging
+
         self.drag_pos = None
 
-        # Load settings
-        self.load_settings()
-
     def mousePressEvent(self, event):
-        """Allow window dragging when clicking the title bar."""
         if event.button() == QtCore.Qt.LeftButton:
             self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
 
     def mouseMoveEvent(self, event):
-        """Move window while dragging."""
         if self.drag_pos is not None:
             self.move(event.globalPos() - self.drag_pos)
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        """Reset drag position after releasing mouse."""
         self.drag_pos = None
 
     def log_status(self, message):
-        """Log a status message to the status log textbox."""
         self.status_log.append_message(message)
 
-    def load_settings(self):
-        settings = self.settings.load()
-        self.dashboard_tab.load_settings(settings)
-        self.youtube_watcher_tab.load_settings(settings)
-        self.settings_tab.load_settings(settings)
-        self.log_status("Settings loaded successfully.")
-
-    def save_settings(self):
-        self.settings.save(self.settings_tab.get_settings())
-        self.log_status("Settings saved successfully!")
-
     def dark_theme(self):
-        """Returns the dark mode stylesheet."""
         return """
         QWidget {
             background-color: #222;
@@ -185,6 +154,7 @@ class GamblerSettingsApp(QtWidgets.QMainWindow):
             color: white;
         }
         """
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)

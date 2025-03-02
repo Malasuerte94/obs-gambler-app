@@ -28,6 +28,8 @@ class SettingsTab(QtWidgets.QWidget):
         save_button.clicked.connect(self.save_settings)
         layout.addWidget(save_button)
 
+        self.load_settings()
+
     def create_api_settings(self):
         api_settings = QtWidgets.QWidget()
         layout = QtWidgets.QFormLayout(api_settings)
@@ -141,16 +143,16 @@ class SettingsTab(QtWidgets.QWidget):
 
         self.parent.log_status("Settings saved successfully.")
 
-    def load_settings(self, settings):
-        self.api_url_entry.setText(settings.get('api_url', ''))
-        self.api_streamer_id_entry.setText(settings.get('streamer_id', ''))
-        self.offer_entry.setText(settings.get('offer_file', ''))
-        self.deposit_entry.setText(settings.get('deposit_file', ''))
-        self.casino_play_image_entry.setText(settings.get('casino_play_image_file', ''))
-        self.casino_title_entry.setText(settings.get('casino_title_file', ''))
-        self.youtube_api_entry.setText(settings.get('youtube_api', ''))
-        self.yt_channel_entry.setText(settings.get('yt_channel', ''))
-        self.kick_channel_entry.setText(settings.get('kick_channel', ''))
-        self.points_entry.setText(settings.get('chat_points', ''))
-        self.interval_entry.setText(settings.get('chat_interval', ''))
-        self.ignored_users_entry.setText(settings.get('ignored_users', ''))
+    def load_settings(self):
+        self.api_url_entry.setText(self.parent.settings.get('api_url', ''))
+        self.api_streamer_id_entry.setText(self.parent.settings.get('streamer_id', ''))
+        self.offer_entry.setText(self.parent.settings.get('offer_file', ''))
+        self.deposit_entry.setText(self.parent.settings.get('deposit_file', ''))
+        self.casino_play_image_entry.setText(self.parent.settings.get('casino_play_image_file', ''))
+        self.casino_title_entry.setText(self.parent.settings.get('casino_title_file', ''))
+        self.youtube_api_entry.setText(self.parent.settings.get('youtube_api', ''))
+        self.yt_channel_entry.setText(self.parent.settings.get('yt_channel', ''))
+        self.kick_channel_entry.setText(self.parent.settings.get('kick_channel', ''))
+        self.points_entry.setText(self.parent.settings.get('chat_points', ''))
+        self.interval_entry.setText(self.parent.settings.get('chat_interval', ''))
+        self.ignored_users_entry.setText(self.parent.settings.get('ignored_users', ''))

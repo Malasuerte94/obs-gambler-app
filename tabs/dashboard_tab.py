@@ -7,6 +7,7 @@ from utils.api_client import APIClient  # Import API Client to fetch casinos
 class DashboardTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
+        print(parent.settings)
         self.parent = parent
         self.api_client = APIClient(parent.settings)
         self.init_ui()
@@ -44,6 +45,7 @@ class DashboardTab(QtWidgets.QWidget):
         spin_button.clicked.connect(self.trigger_spin)
         layout.addWidget(spin_button, 4, 1)
 
+        self.load_settings()
         # Load casino list from API
         self.load_casinos_from_api()
 
@@ -62,11 +64,11 @@ class DashboardTab(QtWidgets.QWidget):
 
         self.parent.log_status("Casino list updated successfully.")
 
-    def load_settings(self, settings):
+    def load_settings(self):
         """Load settings and update UI elements with actual file contents."""
 
         # Load offer file path from settings
-        offer_file = settings.get('offer_file', '')
+        offer_file = self.parent.settings.get('offer_file', '')
         if offer_file and os.path.exists(offer_file):
             try:
                 with open(offer_file, "r") as f:
@@ -77,7 +79,7 @@ class DashboardTab(QtWidgets.QWidget):
             self.parent.log_status("Offer file not found. Set it in the Settings tab.")
 
         # Load deposit file path from settings
-        deposit_file = settings.get('deposit_file', '')
+        deposit_file = self.parent.settings.get('deposit_file', '')
         if deposit_file and os.path.exists(deposit_file):
             try:
                 with open(deposit_file, "r") as f:

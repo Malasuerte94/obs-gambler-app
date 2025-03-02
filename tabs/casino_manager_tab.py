@@ -129,7 +129,7 @@ class CasinoManagerTab(QtWidgets.QWidget):
             logo_url = casino.get("logo", "")
             if logo_url:
                 pixmap = QPixmap()
-                pixmap.loadFromData(APIClient.get_url(logo_url, return_raw=True))  # Load image data
+                pixmap.loadFromData(self.api_client.get_url(logo_url, return_raw=True))  # Load image data
                 pixmap = pixmap.scaled(80, 50)  # Resize for table cell
 
                 logo_label.setPixmap(pixmap)
