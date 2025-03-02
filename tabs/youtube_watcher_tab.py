@@ -4,20 +4,20 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hot_message, analyze_top_messages
-from tabs.youtube_watcher.youtube_helper import YouTubeChatTracker, UserActivityTable, INACTIVE_TIMEOUT_MINUTES, \
-    IGNORED_USERS
+from tabs.youtube_watcher.youtube_helper import YouTubeChatTracker, UserActivityTable
 from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
 
 logger = logging.getLogger('YouTubeWatcher')
-
 
 class YouTubeWatcherTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
         logger.info("Initializing YouTubeWatcherTab")
         self.parent = parent
+        self.settings = parent.settings
+        self.ignored_users = self.settings.get('ignored_users', '').split(',')
         try:
-            self.chat_tracker = YouTubeChatTracker()
+            self.chat_tracker = YouTubeChatTracker(parent.settings)
             logger.info("Chat tracker initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize chat tracker: {e}", exc_info=True)
@@ -36,10 +36,10 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.active_users_label = QtWidgets.QLabel("Active Users: 0")
         self.active_users_label.setAlignment(QtCore.Qt.AlignCenter)
         self.active_users_label.setStyleSheet("font-size: 9pt;")
-        self.timeout_label = QtWidgets.QLabel(f"Timeout: {INACTIVE_TIMEOUT_MINUTES} minutes")
+        self.timeout_label = QtWidgets.QLabel(f"Timeout: {int(self.settings.get('chat_interval', 1)) * 60} minutes")
         self.timeout_label.setAlignment(QtCore.Qt.AlignCenter)
         self.timeout_label.setStyleSheet("font-size: 9pt;")
-        self.ignored_label = QtWidgets.QLabel(f"Ignored: {', '.join(IGNORED_USERS)}")
+        self.ignored_label = QtWidgets.QLabel(f"Ignored: {', '.join(self.settings.get('ignored_users', '').split(','))}")
         self.ignored_label.setAlignment(QtCore.Qt.AlignCenter)
         self.ignored_label.setWordWrap(True)
         self.ignored_label.setStyleSheet("font-size: 9pt;")
@@ -199,7 +199,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                     parts = msg.split("||")
                     if len(parts) == 4:
                         msg_id, user, message, member_status = parts
-                        if user in IGNORED_USERS:
+                        if user in self.ignored_users:
                             continue
                         if msg_id not in self.seen_message_ids:
                             self.seen_message_ids.add(msg_id)
@@ -217,7 +217,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
     def add_message_to_table(self, msg_id, user, message, member_status):
         try:
-            if user in IGNORED_USERS:
+            if user in self.ignored_users:
                 return
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
             full_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

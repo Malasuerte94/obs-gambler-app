@@ -8,6 +8,7 @@ class DashboardTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.api_client = APIClient(parent.settings)
         self.init_ui()
 
     def init_ui(self):
@@ -49,7 +50,7 @@ class DashboardTab(QtWidgets.QWidget):
     def load_casinos_from_api(self):
         """Fetch the casino list from API and populate the dropdown."""
         self.casino_selector.clear()
-        response = APIClient.get("get-casinos")  # API call
+        response = self.api_client.get("get-casinos")  # API call
 
         if not response or "casinos" not in response:
             self.parent.log_status("Error: Unable to fetch casinos from API.")
@@ -121,7 +122,7 @@ class DashboardTab(QtWidgets.QWidget):
             return
 
         # Fetch selected casino details from the API
-        response = APIClient.get("get-casinos")
+        response = self.api_client.get("get-casinos")
         if not response or "casinos" not in response:
             self.parent.log_status("Error: Unable to fetch casinos from API.")
             return

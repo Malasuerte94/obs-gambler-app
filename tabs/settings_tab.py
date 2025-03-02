@@ -8,64 +8,102 @@ class SettingsTab(QtWidgets.QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QtWidgets.QGridLayout(self)
+        layout = QtWidgets.QVBoxLayout(self)
+        tab_widget = QtWidgets.QTabWidget()
+        layout.addWidget(tab_widget)
 
-        # Offer File Input
-        layout.addWidget(QtWidgets.QLabel("Select Offer File:"), 0, 0)
-        self.offer_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.offer_entry, 0, 1)
-        offer_button = QtWidgets.QPushButton("Browse")
-        offer_button.clicked.connect(self.browse_offer_file)
-        layout.addWidget(offer_button, 0, 2)
+        api_settings = self.create_api_settings()
+        casino_settings = self.create_casino_settings()
+        youtube_settings = self.create_youtube_settings()
+        kick_settings = self.create_kick_settings()
+        chat_settings = self.create_chat_settings()
 
-        # Deposit File Input
-        layout.addWidget(QtWidgets.QLabel("Select Deposit File:"), 1, 0)
-        self.deposit_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.deposit_entry, 1, 1)
-        deposit_button = QtWidgets.QPushButton("Browse")
-        deposit_button.clicked.connect(self.browse_deposit_file)
-        layout.addWidget(deposit_button, 1, 2)
+        tab_widget.addTab(api_settings, "API Settings")
+        tab_widget.addTab(casino_settings, "Casino Settings")
+        tab_widget.addTab(youtube_settings, "YouTube Settings")
+        tab_widget.addTab(kick_settings, "Kick Settings")
+        tab_widget.addTab(chat_settings, "Chat Settings")
 
-        # Casino Play Image Location
-        layout.addWidget(QtWidgets.QLabel("Casino Play Image:"), 2, 0)
-        self.casino_play_image_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.casino_play_image_entry, 2, 1)
-        play_image_button = QtWidgets.QPushButton("Browse")
-        play_image_button.clicked.connect(self.browse_play_image_file)
-        layout.addWidget(play_image_button, 2, 2)
-
-        # Casino Title File Input
-        layout.addWidget(QtWidgets.QLabel("Casino Title File:"), 3, 0)
-        self.casino_title_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.casino_title_entry, 3, 1)
-        casino_title_button = QtWidgets.QPushButton("Browse")
-        casino_title_button.clicked.connect(self.browse_casino_title_file)
-        layout.addWidget(casino_title_button, 3, 2)
-
-        # YouTube API Key
-        layout.addWidget(QtWidgets.QLabel("YouTube API Key:"), 4, 0)
-        self.youtube_api_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.youtube_api_entry, 4, 1)
-
-        # YouTube Channel ID
-        layout.addWidget(QtWidgets.QLabel("YouTube Channel ID:"), 5, 0)
-        self.yt_channel_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.yt_channel_entry, 5, 1)
-
-        # Spin URL
-        layout.addWidget(QtWidgets.QLabel("Spin URL:"), 6, 0)
-        self.spin_url_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.spin_url_entry, 6, 1)
-
-        # Kick Channel
-        layout.addWidget(QtWidgets.QLabel("Kick Channel:"), 7, 0)
-        self.kick_channel_entry = QtWidgets.QLineEdit()
-        layout.addWidget(self.kick_channel_entry, 7, 1)
-
-        # Save Button
         save_button = QtWidgets.QPushButton("Save Settings")
         save_button.clicked.connect(self.save_settings)
-        layout.addWidget(save_button, 8, 1)
+        layout.addWidget(save_button)
+
+    def create_api_settings(self):
+        api_settings = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout(api_settings)
+
+        self.api_url_entry = QtWidgets.QLineEdit()
+        layout.addRow("API URL:", self.api_url_entry)
+
+        self.api_streamer_id_entry = QtWidgets.QLineEdit()
+        layout.addRow("Streamer ID:", self.api_streamer_id_entry)
+
+        return api_settings
+
+    def create_casino_settings(self):
+        casino_settings = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout(casino_settings)
+
+        self.offer_entry = QtWidgets.QLineEdit()
+        offer_button = QtWidgets.QPushButton("Browse")
+        offer_button.clicked.connect(self.browse_offer_file)
+        layout.addRow("Offer File:", self.offer_entry)
+        layout.addRow("", offer_button)
+
+        self.deposit_entry = QtWidgets.QLineEdit()
+        deposit_button = QtWidgets.QPushButton("Browse")
+        deposit_button.clicked.connect(self.browse_deposit_file)
+        layout.addRow("Deposit File:", self.deposit_entry)
+        layout.addRow("", deposit_button)
+
+        self.casino_play_image_entry = QtWidgets.QLineEdit()
+        play_image_button = QtWidgets.QPushButton("Browse")
+        play_image_button.clicked.connect(self.browse_play_image_file)
+        layout.addRow("Casino Play Image:", self.casino_play_image_entry)
+        layout.addRow("", play_image_button)
+
+        self.casino_title_entry = QtWidgets.QLineEdit()
+        casino_title_button = QtWidgets.QPushButton("Browse")
+        casino_title_button.clicked.connect(self.browse_casino_title_file)
+        layout.addRow("Casino Title File:", self.casino_title_entry)
+        layout.addRow("", casino_title_button)
+
+        return casino_settings
+
+    def create_youtube_settings(self):
+        youtube_settings = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout(youtube_settings)
+
+        self.youtube_api_entry = QtWidgets.QLineEdit()
+        layout.addRow("YouTube API Key:", self.youtube_api_entry)
+
+        self.yt_channel_entry = QtWidgets.QLineEdit()
+        layout.addRow("YouTube Channel ID:", self.yt_channel_entry)
+
+        return youtube_settings
+
+    def create_kick_settings(self):
+        kick_settings = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout(kick_settings)
+
+        self.kick_channel_entry = QtWidgets.QLineEdit()
+        layout.addRow("Kick Channel:", self.kick_channel_entry)
+
+        return kick_settings
+
+    def create_chat_settings(self):
+        chat_settings = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout(chat_settings)
+
+        self.points_entry = QtWidgets.QLineEdit()
+        self.interval_entry = QtWidgets.QLineEdit()
+        layout.addRow("Points:", self.points_entry)
+        layout.addRow("Interval (minutes):", self.interval_entry)
+
+        self.ignored_users_entry = QtWidgets.QLineEdit()
+        layout.addRow("Ignored Users:", self.ignored_users_entry)
+
+        return chat_settings
 
     def browse_offer_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Offer File", "", "Text Files (*.txt)")
@@ -88,25 +126,31 @@ class SettingsTab(QtWidgets.QWidget):
             self.casino_title_entry.setText(filename)
 
     def save_settings(self):
-        """Save the settings using the parent's settings manager."""
+        self.parent.settings.set("api_url", self.api_url_entry.text().strip())
+        self.parent.settings.set("streamer_id", self.api_streamer_id_entry.text().strip())
         self.parent.settings.set("offer_file", self.offer_entry.text().strip())
         self.parent.settings.set("deposit_file", self.deposit_entry.text().strip())
         self.parent.settings.set("casino_play_image_file", self.casino_play_image_entry.text().strip())
         self.parent.settings.set("casino_title_file", self.casino_title_entry.text().strip())
         self.parent.settings.set("youtube_api", self.youtube_api_entry.text().strip())
         self.parent.settings.set("yt_channel", self.yt_channel_entry.text().strip())
-        self.parent.settings.set("spin_url", self.spin_url_entry.text().strip())
         self.parent.settings.set("kick_channel", self.kick_channel_entry.text().strip())
+        self.parent.settings.set("chat_points", self.points_entry.text().strip())
+        self.parent.settings.set("chat_interval", self.interval_entry.text().strip())
+        self.parent.settings.set("ignored_users", self.ignored_users_entry.text().strip())
 
         self.parent.log_status("Settings saved successfully.")
 
     def load_settings(self, settings):
-        """Load settings from the settings manager."""
+        self.api_url_entry.setText(settings.get('api_url', ''))
+        self.api_streamer_id_entry.setText(settings.get('streamer_id', ''))
         self.offer_entry.setText(settings.get('offer_file', ''))
         self.deposit_entry.setText(settings.get('deposit_file', ''))
         self.casino_play_image_entry.setText(settings.get('casino_play_image_file', ''))
         self.casino_title_entry.setText(settings.get('casino_title_file', ''))
         self.youtube_api_entry.setText(settings.get('youtube_api', ''))
         self.yt_channel_entry.setText(settings.get('yt_channel', ''))
-        self.spin_url_entry.setText(settings.get('spin_url', ''))
         self.kick_channel_entry.setText(settings.get('kick_channel', ''))
+        self.points_entry.setText(settings.get('chat_points', ''))
+        self.interval_entry.setText(settings.get('chat_interval', ''))
+        self.ignored_users_entry.setText(settings.get('ignored_users', ''))
