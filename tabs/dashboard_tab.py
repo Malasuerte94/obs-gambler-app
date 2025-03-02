@@ -7,7 +7,6 @@ from utils.api_client import APIClient  # Import API Client to fetch casinos
 class DashboardTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
-        print(parent.settings)
         self.parent = parent
         self.api_client = APIClient(parent.settings)
         self.init_ui()

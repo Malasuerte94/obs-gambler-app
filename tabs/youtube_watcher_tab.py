@@ -96,7 +96,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             self.parent.log_status(f"Error setting up user activity table: {e}")
         self.chat_view = QWebEngineView()
         self.chat_view.setZoomFactor(0.8)
-        self.chat_view.loadFinished.connect(self.apply_web_styles)
         self.splitter.addWidget(self.chat_view)
         self.splitter.setSizes([150, 350, 250, 800])
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -107,40 +106,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.stats_timer.start(5000)
         logger.info("YouTubeWatcherTab initialization complete")
         self.load_settings()
-
-    def apply_web_styles(self, success):
-        if success:
-            css = """
-            * {
-                font-size: 0.9em !important;
-            }
-            yt-live-chat-renderer {
-                padding: 0 !important;
-            }
-            yt-live-chat-message-renderer, 
-            yt-live-chat-text-message-renderer {
-                padding: 2px 4px !important;
-                min-height: 24px !important;
-            }
-            #author-photo {
-                width: 20px !important;
-                height: 20px !important;
-            }
-            #item-offset {
-                padding-left: 24px !important;
-            }
-            """
-            js = f"""
-            (function() {{
-                var style = document.createElement('style');
-                style.type = 'text/css';
-                style.innerHTML = `{css}`;
-                document.head.appendChild(style);
-                console.log('Applied custom CSS to YouTube chat');
-            }})();
-            """
-            self.chat_view.page().runJavaScript(js)
-            logger.info("Applied custom styles to YouTube chat")
 
     def update_user_stats(self):
         try:
