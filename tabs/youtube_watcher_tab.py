@@ -9,6 +9,7 @@ from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
 
 logger = logging.getLogger('YouTubeWatcher')
 
+
 class YouTubeWatcherTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
@@ -26,22 +27,29 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.last_percent = None
         self.last_top3 = None
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
+
         self.hotword_label = QtWidgets.QLabel("HOT-WORD: N/A")
         self.hotword_label.setAlignment(QtCore.Qt.AlignCenter)
         self.hotword_label.setFixedWidth(120)
         self.hotword_label.setStyleSheet("font-size: 9pt;")
+
         self.top3_checkbox = QtWidgets.QCheckBox("TOP 3")
         self.top3_checkbox.setStyleSheet("font-size: 9pt;")
+
         self.active_users_label = QtWidgets.QLabel("Active Users: 0")
         self.active_users_label.setAlignment(QtCore.Qt.AlignCenter)
         self.active_users_label.setStyleSheet("font-size: 9pt;")
+
         self.timeout_label = QtWidgets.QLabel(f"Timeout: {int(self.parent.settings.get('chat_interval', 1))} minutes")
         self.timeout_label.setAlignment(QtCore.Qt.AlignCenter)
         self.timeout_label.setStyleSheet("font-size: 9pt;")
-        self.ignored_label = QtWidgets.QLabel(f"Ignored: {', '.join(self.parent.settings.get('ignored_users', '').split(','))}")
+
+        self.ignored_label = QtWidgets.QLabel(
+            f"Ignored: {', '.join(self.parent.settings.get('ignored_users', '').split(','))}")
         self.ignored_label.setAlignment(QtCore.Qt.AlignCenter)
         self.ignored_label.setWordWrap(True)
         self.ignored_label.setStyleSheet("font-size: 9pt;")
+
         left_layout = QtWidgets.QVBoxLayout()
         left_layout.setContentsMargins(2, 2, 2, 2)
         left_layout.setSpacing(4)
@@ -51,41 +59,11 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         left_layout.addWidget(self.timeout_label)
         left_layout.addWidget(self.ignored_label)
         left_layout.addStretch()
+
         left_widget = QtWidgets.QWidget()
         left_widget.setLayout(left_layout)
         self.splitter.addWidget(left_widget)
-        self.chat_table = QtWidgets.QTableWidget()
-        self.chat_table.setColumnCount(4)
-        self.chat_table.setHorizontalHeaderLabels(["User", "Message", "Member", "Date-Time"])
-        self.chat_table.setColumnWidth(0, 120)
-        self.chat_table.setColumnWidth(1, 320)
-        self.chat_table.setColumnWidth(2, 40)
-        self.chat_table.setColumnWidth(3, 90)
-        self.chat_table.verticalHeader().setDefaultSectionSize(20)
-        self.chat_table.verticalHeader().setVisible(False)
-        self.chat_table.setShowGrid(False)
-        self.chat_table.setStyleSheet("""
-               QTableWidget {
-                   background-color: #222;
-                   color: white;
-                   gridline-color: #444;
-                   selection-background-color: #444;
-                   selection-color: white;
-                   font-size: 9pt;
-               }
-               QHeaderView::section {
-                   background-color: #333;
-                   color: white;
-                   padding: 2px;
-                   border: 1px solid #444;
-                   font-size: 9pt;
-               }
-               QTableCornerButton::section {
-                   background-color: #333;
-                   border: 1px solid #444;
-               }
-           """)
-        self.splitter.addWidget(self.chat_table)
+
         try:
             self.user_activity_table = UserActivityTable()
             self.user_activity_table.set_tracker(self.chat_tracker)
@@ -94,16 +72,21 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         except Exception as e:
             logger.error(f"Failed to initialize user activity table: {e}", exc_info=True)
             self.parent.log_status(f"Error setting up user activity table: {e}")
+
         self.chat_view = QWebEngineView()
         self.chat_view.setZoomFactor(0.8)
         self.splitter.addWidget(self.chat_view)
-        self.splitter.setSizes([150, 350, 250, 800])
+
+        self.splitter.setSizes([150, 250, 800])
+
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.addWidget(self.splitter)
+
         self.stats_timer = QtCore.QTimer(self)
         self.stats_timer.timeout.connect(self.update_user_stats)
         self.stats_timer.start(5000)
+
         logger.info("YouTubeWatcherTab initialization complete")
         self.load_settings()
 
@@ -168,7 +151,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                             continue
                         if msg_id not in self.seen_message_ids:
                             self.seen_message_ids.add(msg_id)
-                            self.add_message_to_table(msg_id, user, message, member_status)
+                            self.process_message(msg_id, user, message, member_status)
                             new_msg_count += 1
                 if new_msg_count > 0:
                     logger.info(f"Added {new_msg_count} new messages")
@@ -180,45 +163,33 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             logger.error(f"Error handling chat messages: {e}", exc_info=True)
             self.parent.log_status(f"Error processing chat messages: {e}")
 
-    def add_message_to_table(self, msg_id, user, message, member_status):
+    def process_message(self, msg_id, user, message, member_status):
         try:
             if user in self.ignored_users:
-                return
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            full_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            success = self.chat_tracker.add_message(msg_id, user, message, member_status, full_timestamp)
+                return False
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            success = self.chat_tracker.add_message(msg_id, user, message, member_status, timestamp)
             if not success:
                 logger.warning(f"Failed to add message to database: {msg_id}")
-                return
-            self.chat_table.insertRow(0)
-            self.chat_table.setItem(0, 0, QtWidgets.QTableWidgetItem(user))
-            self.chat_table.setItem(0, 1, QtWidgets.QTableWidgetItem(message))
-            self.chat_table.setItem(0, 2, QtWidgets.QTableWidgetItem("Y" if member_status == "Yes" else "N"))
-            self.chat_table.setItem(0, 3, QtWidgets.QTableWidgetItem(timestamp))
-            while self.chat_table.rowCount() > 1000:
-                self.chat_table.removeRow(1000)
-            logger.debug(f"Added message from {user}: {message[:20]}...")
+                return False
+            logger.debug(f"Processed message from {user}: {message[:20]}...")
+            return True
         except Exception as e:
-            logger.error(f"Error adding message to table: {e}", exc_info=True)
-            self.parent.log_status(f"Error adding message: {e}")
+            logger.error(f"Error processing message: {e}", exc_info=True)
+            self.parent.log_status(f"Error processing message: {e}")
+            return False
 
     def update_hotwords(self):
         try:
-            max_messages = min(100, self.chat_table.rowCount())
-            messages = [
-                self.chat_table.item(row, 1).text().strip()
-                for row in range(max_messages)
-                if self.chat_table.item(row, 1) and self.chat_table.item(row, 1).text().strip()
-            ]
+            messages = []
+            all_messages = self.chat_tracker.get_all_messages(limit=100)
+            for _, _, message, _, _ in all_messages:
+                if message and message.strip():
+                    messages.append(message.strip())
 
             if len(messages) < 30:
                 self.hotword_label.setText("HOT-WORD: Not enough data")
                 logger.debug("Not enough messages for hotword analysis")
-                return
-
-            if not messages:
-                self.hotword_label.setText("HOT-WORD: N/A")
-                logger.debug("No messages for hotword analysis")
                 return
 
             if self.top3_checkbox.isChecked():
@@ -237,19 +208,15 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                     logger.info(f"Updated hotword: {hotword.upper()} {percent:.1f}%")
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
-        except IndexError as e:
-            logger.error(f"Error updating hotwords: List index out of range - {e}", exc_info=True)
-            self.parent.log_status(f"Error updating hotwords: List index out of range - {e}")
         except Exception as e:
-            logger.error(f"Unexpected error in update_hotwords: {e}", exc_info=True)
-            self.parent.log_status(f"Unexpected error in update_hotwords: {e}")
+            logger.error(f"Error updating hotwords: {e}", exc_info=True)
+            self.parent.log_status(f"Error updating hotwords: {e}")
 
     def load_settings(self):
         logger.info("Loading Youtube Watcher settings")
         try:
             youtube_api = self.parent.settings.get("youtube_api", "")
             yt_channel = self.parent.settings.get("yt_channel", "")
-            self.chat_table.setRowCount(0)
             self.parent.log_status("Checking for live stream on channel: " + yt_channel)
             logger.info(f"Checking live stream for channel: {yt_channel}")
             logger.info("Resetting database for new session")

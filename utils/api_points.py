@@ -15,7 +15,6 @@ def award_points(user_ids, points, streamer_id, api_client):
     }
 
     logger.info(f"Awarding {points} points to {len(user_ids)} users")
-
     try:
         endpoint = "add-users-points"
         response = api_client.post(endpoint, json=data)
