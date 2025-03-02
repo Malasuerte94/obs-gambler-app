@@ -6,7 +6,7 @@ STOP_WORDS = {"și", "la", "si", "de", "in", "în", "pe", "el", "e", "ai", "eu",
 
 def get_live_video_id(yt_channel, api_key):
     if is_dev():
-        return 'FuhKzvvFGvo'
+        return 'Ona5GYGoTVw'
     else:
         # if mode is dev
         """

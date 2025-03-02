@@ -1,112 +1,169 @@
 import datetime
+import os
+import logging
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hot_message, analyze_top_messages
+from tabs.youtube_watcher.youtube_helper import YouTubeChatTracker, UserActivityTable, INACTIVE_TIMEOUT_MINUTES, \
+    IGNORED_USERS
 from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
+
+logger = logging.getLogger('YouTubeWatcher')
 
 
 class YouTubeWatcherTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
+        logger.info("Initializing YouTubeWatcherTab")
         self.parent = parent
-
-        # Maintain chat history (up to 500 messages) and track seen messages by ID
-        self.chat_history = []
-        self.seen_message_ids = set()  # Store message IDs to avoid duplicates
+        try:
+            self.chat_tracker = YouTubeChatTracker()
+            logger.info("Chat tracker initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize chat tracker: {e}", exc_info=True)
+            self.parent.log_status(f"Error initializing database: {e}")
+        self.seen_message_ids = set()
         self.last_hotword = None
         self.last_percent = None
         self.last_top3 = None
-
-        # Create a horizontal splitter for three panes.
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
-
-        # Left pane: a widget to hold hotword label and TOP 3 checkbox.
         self.hotword_label = QtWidgets.QLabel("HOT-WORD: N/A")
         self.hotword_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.hotword_label.setFixedWidth(150)
+        self.hotword_label.setFixedWidth(120)
+        self.hotword_label.setStyleSheet("font-size: 9pt;")
         self.top3_checkbox = QtWidgets.QCheckBox("TOP 3")
+        self.top3_checkbox.setStyleSheet("font-size: 9pt;")
+        self.active_users_label = QtWidgets.QLabel("Active Users: 0")
+        self.active_users_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.active_users_label.setStyleSheet("font-size: 9pt;")
+        self.timeout_label = QtWidgets.QLabel(f"Timeout: {INACTIVE_TIMEOUT_MINUTES} minutes")
+        self.timeout_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.timeout_label.setStyleSheet("font-size: 9pt;")
+        self.ignored_label = QtWidgets.QLabel(f"Ignored: {', '.join(IGNORED_USERS)}")
+        self.ignored_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.ignored_label.setWordWrap(True)
+        self.ignored_label.setStyleSheet("font-size: 9pt;")
         left_layout = QtWidgets.QVBoxLayout()
+        left_layout.setContentsMargins(2, 2, 2, 2)
+        left_layout.setSpacing(4)
         left_layout.addWidget(self.hotword_label)
         left_layout.addWidget(self.top3_checkbox)
+        left_layout.addWidget(self.active_users_label)
+        left_layout.addWidget(self.timeout_label)
+        left_layout.addWidget(self.ignored_label)
         left_layout.addStretch()
         left_widget = QtWidgets.QWidget()
         left_widget.setLayout(left_layout)
         self.splitter.addWidget(left_widget)
-
-        # Middle pane: Chat log stored in a dark-themed table
         self.chat_table = QtWidgets.QTableWidget()
         self.chat_table.setColumnCount(4)
         self.chat_table.setHorizontalHeaderLabels(["User", "Message", "Member", "Date-Time"])
-        self.chat_table.setColumnWidth(0, 150)  # User
-        self.chat_table.setColumnWidth(1, 400)  # Message
-        self.chat_table.setColumnWidth(2, 80)   # Member
-        self.chat_table.setColumnWidth(3, 120)  # Date-Time
-
-        # Apply dark mode styling to the table
+        self.chat_table.setColumnWidth(0, 120)
+        self.chat_table.setColumnWidth(1, 320)
+        self.chat_table.setColumnWidth(2, 40)
+        self.chat_table.setColumnWidth(3, 90)
+        self.chat_table.verticalHeader().setDefaultSectionSize(20)
+        self.chat_table.verticalHeader().setVisible(False)
+        self.chat_table.setShowGrid(False)
         self.chat_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #222;
-                color: white;
-                gridline-color: #444;
-                selection-background-color: #444;
-                selection-color: white;
-            }
-            QHeaderView::section {
-                background-color: #333;
-                color: white;
-                padding: 4px;
-                border: 1px solid #444;
-            }
-            QTableCornerButton::section {
-                background-color: #333;
-                border: 1px solid #444;
-            }
-        """)
-
+               QTableWidget {
+                   background-color: #222;
+                   color: white;
+                   gridline-color: #444;
+                   selection-background-color: #444;
+                   selection-color: white;
+                   font-size: 9pt;
+               }
+               QHeaderView::section {
+                   background-color: #333;
+                   color: white;
+                   padding: 2px;
+                   border: 1px solid #444;
+                   font-size: 9pt;
+               }
+               QTableCornerButton::section {
+                   background-color: #333;
+                   border: 1px solid #444;
+               }
+           """)
         self.splitter.addWidget(self.chat_table)
-
-        # Right pane: Chat webpage.
-        self.chat_view = QWebEngineView()
-        self.splitter.addWidget(self.chat_view)
-
-        self.splitter.setSizes([150, 400, 800])
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.addWidget(self.splitter)
-
-    def load_settings(self, settings):
-        """Load YouTube API key and channel from settings."""
-        youtube_api = settings.get("youtube_api", "")
-        yt_channel = settings.get("yt_channel", "")
-
-        self.youtube_api = youtube_api
-        self.yt_channel = yt_channel
-        self.chat_table.setRowCount(0)  # Clear previous chat
-        self.parent.log_status("Checking for live stream on channel: " + yt_channel)
-
         try:
-            live_video_id = get_live_video_id(yt_channel, youtube_api)
-            if live_video_id:
-                self.parent.log_status("Live video found: " + live_video_id)
-                chat_url = "https://www.youtube.com/live_chat?v=" + live_video_id
-                self.parent.log_status("Loading chat URL: " + chat_url)
-                self.chat_view.setUrl(QtCore.QUrl(chat_url))
-                self.chat_view.loadFinished.connect(self.onChatLoadFinished)
-            else:
-                self.parent.log_status("No live video is currently streaming.")
+            self.user_activity_table = UserActivityTable()
+            self.user_activity_table.set_tracker(self.chat_tracker)
+            self.splitter.addWidget(self.user_activity_table)
+            logger.info("User activity table initialized successfully")
         except Exception as e:
-            self.parent.log_status("Error while checking live status: " + str(e))
+            logger.error(f"Failed to initialize user activity table: {e}", exc_info=True)
+            self.parent.log_status(f"Error setting up user activity table: {e}")
+        self.chat_view = QWebEngineView()
+        self.chat_view.setZoomFactor(0.8)
+        self.chat_view.loadFinished.connect(self.apply_web_styles)
+        self.splitter.addWidget(self.chat_view)
+        self.splitter.setSizes([150, 350, 250, 800])
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(2, 2, 2, 2)
+        main_layout.addWidget(self.splitter)
+        self.stats_timer = QtCore.QTimer(self)
+        self.stats_timer.timeout.connect(self.update_user_stats)
+        self.stats_timer.start(5000)
+        logger.info("YouTubeWatcherTab initialization complete")
+
+    def apply_web_styles(self, success):
+        if success:
+            css = """
+            * {
+                font-size: 0.9em !important;
+            }
+            yt-live-chat-renderer {
+                padding: 0 !important;
+            }
+            yt-live-chat-message-renderer, 
+            yt-live-chat-text-message-renderer {
+                padding: 2px 4px !important;
+                min-height: 24px !important;
+            }
+            #author-photo {
+                width: 20px !important;
+                height: 20px !important;
+            }
+            #item-offset {
+                padding-left: 24px !important;
+            }
+            """
+            js = f"""
+            (function() {{
+                var style = document.createElement('style');
+                style.type = 'text/css';
+                style.innerHTML = `{css}`;
+                document.head.appendChild(style);
+                console.log('Applied custom CSS to YouTube chat');
+            }})();
+            """
+            self.chat_view.page().runJavaScript(js)
+            logger.info("Applied custom styles to YouTube chat")
+
+    def update_user_stats(self):
+        try:
+            active_count = self.chat_tracker.get_active_count()
+            self.active_users_label.setText(f"Active Users: {active_count}")
+            logger.debug(f"Updated active users count: {active_count}")
+        except Exception as e:
+            logger.error(f"Error updating user stats: {e}", exc_info=True)
 
     def onChatLoadFinished(self, ok):
         if ok:
+            logger.info("Chat page loaded successfully")
             self.parent.log_status("Chat page loaded successfully. Starting extraction...")
             self.chat_timer = QtCore.QTimer(self)
             self.chat_timer.timeout.connect(self.extractChatMessages)
             self.chat_timer.start(1000)
         else:
+            logger.error("Failed to load chat page")
             self.parent.log_status("Failed to load chat page.")
 
     def extractChatMessages(self):
+        logger.debug("Extracting chat messages")
         js_extract = """
         (function(){
             var messages = [];
@@ -127,92 +184,122 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             return messages.join("\\n");
         })();
         """
-        self.chat_view.page().runJavaScript(js_extract, self.handleChatMessages)
+        try:
+            self.chat_view.page().runJavaScript(js_extract, self.handleChatMessages)
+        except Exception as e:
+            logger.error(f"Error executing JavaScript for chat extraction: {e}", exc_info=True)
+            self.parent.log_status(f"Error extracting chat: {e}")
 
     def handleChatMessages(self, result):
-        if result is not None:
-            new_msgs = result.split("\n")
-            for msg in new_msgs:
-                parts = msg.split("||")
-                if len(parts) == 4:
-                    msg_id, user, message, member_status = parts
-                    if msg_id not in self.seen_message_ids:  # Only add new messages
-                        self.seen_message_ids.add(msg_id)
-                        self.add_message_to_table(user, message, member_status)
-
-            self.save_chat_to_file()
-            self.update_hotwords()
-
-        else:
-            self.parent.log_status("No chat messages extracted.")
-
-    def add_message_to_table(self, user, message, member_status):
-        """Adds a new chat message to the table at the top (newest first) with timestamp."""
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        self.chat_table.insertRow(0)  # Insert at the top
-        self.chat_table.setItem(0, 0, QtWidgets.QTableWidgetItem(user))
-        self.chat_table.setItem(0, 1, QtWidgets.QTableWidgetItem(message))
-        self.chat_table.setItem(0, 2, QtWidgets.QTableWidgetItem(member_status))
-        self.chat_table.setItem(0, 3, QtWidgets.QTableWidgetItem(timestamp))
-
-        # Keep only the last 500 messages
-        while self.chat_table.rowCount() > 1000:
-            self.chat_table.removeRow(1000)
-
-    def save_chat_to_file(self):
-        """Save the last 500 chat messages to a text file."""
         try:
-            with open("youtube_chat_log.txt", "w", encoding="utf-8") as f:
-                for row in range(self.chat_table.rowCount()):
-                    user = self.chat_table.item(row, 0).text()
-                    message = self.chat_table.item(row, 1).text()
-                    member = self.chat_table.item(row, 2).text()
-                    timestamp = self.chat_table.item(row, 3).text()
-                    f.write(f"{timestamp} || {user} || {member} || {message}\n")
+            if result is not None:
+                new_msgs = result.split("\n")
+                new_msg_count = 0
+                logger.debug(f"Processing {len(new_msgs)} potential messages")
+                for msg in new_msgs:
+                    parts = msg.split("||")
+                    if len(parts) == 4:
+                        msg_id, user, message, member_status = parts
+                        if user in IGNORED_USERS:
+                            continue
+                        if msg_id not in self.seen_message_ids:
+                            self.seen_message_ids.add(msg_id)
+                            self.add_message_to_table(msg_id, user, message, member_status)
+                            new_msg_count += 1
+                if new_msg_count > 0:
+                    logger.info(f"Added {new_msg_count} new messages")
+                self.update_hotwords()
+            else:
+                logger.debug("No chat messages extracted")
+                self.parent.log_status("No chat messages extracted.")
         except Exception as e:
-            self.parent.log_status(f"Error saving chat log: {e}")
+            logger.error(f"Error handling chat messages: {e}", exc_info=True)
+            self.parent.log_status(f"Error processing chat messages: {e}")
+
+    def add_message_to_table(self, msg_id, user, message, member_status):
+        try:
+            if user in IGNORED_USERS:
+                return
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            full_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            success = self.chat_tracker.add_message(msg_id, user, message, member_status, full_timestamp)
+            if not success:
+                logger.warning(f"Failed to add message to database: {msg_id}")
+                return
+            self.chat_table.insertRow(0)
+            self.chat_table.setItem(0, 0, QtWidgets.QTableWidgetItem(user))
+            self.chat_table.setItem(0, 1, QtWidgets.QTableWidgetItem(message))
+            self.chat_table.setItem(0, 2, QtWidgets.QTableWidgetItem("Y" if member_status == "Yes" else "N"))
+            self.chat_table.setItem(0, 3, QtWidgets.QTableWidgetItem(timestamp))
+            while self.chat_table.rowCount() > 1000:
+                self.chat_table.removeRow(1000)
+            logger.debug(f"Added message from {user}: {message[:20]}...")
+        except Exception as e:
+            logger.error(f"Error adding message to table: {e}", exc_info=True)
+            self.parent.log_status(f"Error adding message: {e}")
 
     def update_hotwords(self):
-        """Analyzes the chat messages and updates the hotword label and HTML display."""
         try:
-            # Ensure messages are not empty and contain valid data
             messages = [
                 self.chat_table.item(row, 1).text().strip()
                 for row in range(self.chat_table.rowCount())
                 if self.chat_table.item(row, 1) and self.chat_table.item(row, 1).text().strip()
             ]
-
             if len(messages) < 30:
                 self.hotword_label.setText("HOT-WORD: Not enough data")
+                logger.debug("Not enough messages for hotword analysis")
                 return
-
             if not messages:
                 self.hotword_label.setText("HOT-WORD: N/A")
+                logger.debug("No messages for hotword analysis")
                 return
-
             if self.top3_checkbox.isChecked():
                 top3 = analyze_top_messages(messages, top_n=3)
                 if top3:
                     self.hotword_label.setText(f"TOP 3: {', '.join([word for word, _ in top3])}")
                     update_hotword_html(None, None, top3=top3)
+                    logger.info(f"Updated TOP 3 hotwords: {', '.join([word for word, _ in top3])}")
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
             else:
                 hotword, percent = analyze_hot_message(messages)
-
                 if hotword:
                     self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
                     update_hotword_html(hotword, percent)
+                    logger.info(f"Updated hotword: {hotword.upper()} {percent:.1f}%")
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
-
         except IndexError as e:
+            logger.error(f"Error updating hotwords: List index out of range - {e}", exc_info=True)
             self.parent.log_status(f"Error updating hotwords: List index out of range - {e}")
-
         except Exception as e:
+            logger.error(f"Unexpected error in update_hotwords: {e}", exc_info=True)
             self.parent.log_status(f"Unexpected error in update_hotwords: {e}")
 
-    def log_message(self, message):
-        """Helper function to print log messages."""
-        print(f"[YouTubeWatcher] {message}")
+    def load_settings(self, settings):
+        logger.info("Loading settings")
+        try:
+            youtube_api = settings.get("youtube_api", "")
+            yt_channel = settings.get("yt_channel", "")
+            self.youtube_api = youtube_api
+            self.yt_channel = yt_channel
+            self.chat_table.setRowCount(0)
+            self.parent.log_status("Checking for live stream on channel: " + yt_channel)
+            logger.info(f"Checking live stream for channel: {yt_channel}")
+            logger.info("Resetting database for new session")
+            self.chat_tracker.reset_database()
+            self.seen_message_ids.clear()
+            live_video_id = get_live_video_id(yt_channel, youtube_api)
+            if live_video_id:
+                logger.info(f"Live video found: {live_video_id}")
+                self.parent.log_status("Live video found: " + live_video_id)
+                chat_url = "https://www.youtube.com/live_chat?v=" + live_video_id
+                self.parent.log_status("Loading chat URL: " + chat_url)
+                self.chat_view.setUrl(QtCore.QUrl(chat_url))
+                self.chat_view.loadFinished.connect(self.onChatLoadFinished)
+            else:
+                logger.warning("No live video currently streaming")
+                self.parent.log_status("No live video is currently streaming.")
+        except Exception as e:
+            logger.error(f"Error loading settings: {e}", exc_info=True)
+            self.parent.log_status("Error while checking live status: " + str(e))
