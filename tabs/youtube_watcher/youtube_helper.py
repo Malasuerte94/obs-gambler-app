@@ -3,6 +3,7 @@ import time
 import datetime
 import os
 import logging
+from utils.api_points import award_points
 
 LOG_FILE = 'youtube_helper.log'
 if os.path.exists(LOG_FILE):
@@ -18,13 +19,16 @@ logger = logging.getLogger('YouTubeHelper')
 
 INACTIVE_TIMEOUT_MINUTES = 1
 DB_FILE = "youtube_chat.db"
-IGNORED_USERS = ["Nightbot", "Streamlabs"]
+IGNORED_USERS = ["Nightbot"]
+DEFAULT_POINTS = 1
 
 
 class YouTubeChatTracker:
     def __init__(self, db_file=DB_FILE, inactive_timeout=INACTIVE_TIMEOUT_MINUTES):
         logger.info(f"Initializing YouTubeChatTracker with timeout: {inactive_timeout} min, db: {db_file}")
         self.db_file = db_file
+        self.last_points_award_time = 0
+        self.points_award_interval = 60 #here custom
         self.inactive_timeout = inactive_timeout * 60
         self.conn = None
         self.cursor = None
@@ -142,6 +146,44 @@ class YouTubeChatTracker:
         except Exception as e:
             logger.error(f"Error processing timeouts: {e}", exc_info=True)
             return []
+
+    def award_points_to_active_users(self, points=DEFAULT_POINTS, force=False):
+        """
+        Award points to active users at specified intervals
+
+        Args:
+            points: Number of points to award
+            force: If True, award points regardless of the time interval
+        """
+        try:
+            current_time = time.time()
+            time_since_last_award = current_time - self.last_points_award_time
+
+            # Check if we should award points based on time interval
+            if not force and time_since_last_award < self.points_award_interval:
+                logger.debug(
+                    f"Skipping points award - next award in {self.points_award_interval - time_since_last_award:.1f} seconds")
+                return False
+
+            active_users = self.get_active_users()
+            if not active_users:
+                logger.info("No active users to award points")
+                return False
+
+            user_ids = [user[0] for user in active_users]
+            logger.info(f"Awarding {points} points to {len(user_ids)} active users")
+
+            result = award_points(user_ids, points)
+
+            if result:
+                # Update the last award time only if successful
+                self.last_points_award_time = current_time
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error awarding points to active users: {e}", exc_info=True)
+            return False
 
     def get_active_users(self):
         logger.debug("Getting active users")
@@ -280,7 +322,7 @@ class UserActivityTable(QtWidgets.QTableWidget):
                 self.setItem(i, 0, status_item)
                 self.setItem(i, 1, QtWidgets.QTableWidgetItem(str(user_id)))
                 self.setItem(i, 2, QtWidgets.QTableWidgetItem(str(msg_count)))
-                timestamp = datetime.datetime.fromtimestamp(last_activity).strftime("%Y-%m-%d %H:%M:%S")
+                timestamp = datetime.datetime.fromtimestamp(last_activity).strftime("%H:%M:%S")
                 self.setItem(i, 3, QtWidgets.QTableWidgetItem(timestamp))
             row_count = len(active_users)
             for j, (user_id, last_activity, msg_count, is_member) in enumerate(inactive_users):
@@ -291,8 +333,10 @@ class UserActivityTable(QtWidgets.QTableWidget):
                 self.setItem(row, 0, status_item)
                 self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(user_id)))
                 self.setItem(row, 2, QtWidgets.QTableWidgetItem(str(msg_count)))
-                timestamp = datetime.datetime.fromtimestamp(last_activity).strftime("%Y-%m-%d %H:%M:%S")
+                timestamp = datetime.datetime.fromtimestamp(last_activity).strftime("%H:%M:%S")
                 self.setItem(row, 3, QtWidgets.QTableWidgetItem(timestamp))
             logger.debug("User activity table updated successfully")
+
+            self.tracker.award_points_to_active_users()
         except Exception as e:
             logger.error(f"Error updating user list: {e}", exc_info=True)

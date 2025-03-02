@@ -1,5 +1,4 @@
 import datetime
-import os
 import logging
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -240,19 +239,23 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
     def update_hotwords(self):
         try:
+            max_messages = min(100, self.chat_table.rowCount())
             messages = [
                 self.chat_table.item(row, 1).text().strip()
-                for row in range(self.chat_table.rowCount())
+                for row in range(max_messages)
                 if self.chat_table.item(row, 1) and self.chat_table.item(row, 1).text().strip()
             ]
+
             if len(messages) < 30:
                 self.hotword_label.setText("HOT-WORD: Not enough data")
                 logger.debug("Not enough messages for hotword analysis")
                 return
+
             if not messages:
                 self.hotword_label.setText("HOT-WORD: N/A")
                 logger.debug("No messages for hotword analysis")
                 return
+
             if self.top3_checkbox.isChecked():
                 top3 = analyze_top_messages(messages, top_n=3)
                 if top3:
