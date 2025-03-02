@@ -20,7 +20,7 @@ class CustomTitleBar(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(10, 0, 10, 0)
 
-        self.title_label = QtWidgets.QLabel("Gambler Settings", self)
+        self.title_label = QtWidgets.QLabel("CasinoLabs", self)
         self.title_label.setStyleSheet("color: white; font-size: 14px;")
         layout.addWidget(self.title_label)
 

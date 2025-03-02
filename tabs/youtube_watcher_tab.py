@@ -1,4 +1,5 @@
 import datetime
+import time
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
@@ -12,7 +13,9 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         super().__init__()
         self.parent = parent
         self.parent.log_status("Initializing YouTubeWatcherTab")
-        self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if user.strip()]
+        self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if
+                              user.strip()]
+        self.message_count = 0
         try:
             self.chat_tracker = YouTubeChatTracker(parent.settings)
             self.parent.log_status("Chat tracker initialized successfully")
@@ -25,10 +28,12 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.last_top3 = None
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
 
-        self.hotword_label = QtWidgets.QLabel("HOT-WORD: N/A")
-        self.hotword_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.hotword_label.setFixedWidth(120)
-        self.hotword_label.setStyleSheet("font-size: 9pt;")
+        self.hotword_display = QtWidgets.QTextEdit()
+        self.hotword_display.setReadOnly(True)
+        self.hotword_display.setFixedHeight(80)
+        self.hotword_display.setFixedWidth(200)
+        self.hotword_display.setStyleSheet("font-size: 10pt; background-color: #222; color: white;")
+        self.hotword_display.setText("HOT-WORDS: N/A")
 
         self.top3_checkbox = QtWidgets.QCheckBox("TOP 3")
         self.top3_checkbox.setStyleSheet("font-size: 9pt;")
@@ -36,6 +41,10 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.active_users_label = QtWidgets.QLabel("Active Users: 0")
         self.active_users_label.setAlignment(QtCore.Qt.AlignCenter)
         self.active_users_label.setStyleSheet("font-size: 9pt;")
+
+        self.message_count_label = QtWidgets.QLabel("Messages: 0 added")
+        self.message_count_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.message_count_label.setStyleSheet("font-size: 9pt;")
 
         self.timeout_label = QtWidgets.QLabel(f"Timeout: {int(self.parent.settings.get('chat_interval', 1))} minutes")
         self.timeout_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -47,14 +56,32 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.ignored_label.setWordWrap(True)
         self.ignored_label.setStyleSheet("font-size: 9pt;")
 
+        self.points_countdown_label = QtWidgets.QLabel("Points Update in: 00:00")
+        self.points_countdown_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.points_countdown_label.setStyleSheet("font-size: 9pt;")
+
+        self.add_points_layout = QtWidgets.QHBoxLayout()
+        self.points_input = QtWidgets.QLineEdit()
+        self.points_input.setPlaceholderText("Points")
+        self.points_input.setFixedWidth(80)
+
+        self.add_points_button = QtWidgets.QPushButton("Add to All")
+        self.add_points_button.clicked.connect(self.add_points_to_all)
+
+        self.add_points_layout.addWidget(self.points_input)
+        self.add_points_layout.addWidget(self.add_points_button)
+
         left_layout = QtWidgets.QVBoxLayout()
         left_layout.setContentsMargins(2, 2, 2, 2)
         left_layout.setSpacing(4)
-        left_layout.addWidget(self.hotword_label)
+        left_layout.addWidget(self.hotword_display)
         left_layout.addWidget(self.top3_checkbox)
         left_layout.addWidget(self.active_users_label)
+        left_layout.addWidget(self.message_count_label)
         left_layout.addWidget(self.timeout_label)
         left_layout.addWidget(self.ignored_label)
+        left_layout.addWidget(self.points_countdown_label)
+        left_layout.addLayout(self.add_points_layout)
         left_layout.addStretch()
 
         left_widget = QtWidgets.QWidget()
@@ -74,7 +101,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.chat_view.setZoomFactor(0.8)
         self.splitter.addWidget(self.chat_view)
 
-        self.splitter.setSizes([150, 250, 800])
+        self.splitter.setSizes([200, 250, 800])
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(2, 2, 2, 2)
@@ -82,7 +109,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
         self.stats_timer = QtCore.QTimer(self)
         self.stats_timer.timeout.connect(self.update_user_stats)
-        self.stats_timer.start(5000)
+        self.stats_timer.start(1000)
 
         self.parent.log_status("YouTubeWatcherTab initialization complete")
         self.load_settings()
@@ -91,8 +118,36 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         try:
             active_count = self.chat_tracker.get_active_count()
             self.active_users_label.setText(f"Active Users: {active_count}")
+
+            current_time = int(time.time())
+            last_award_time = int(self.chat_tracker.last_points_award_time)
+            interval = int(self.chat_tracker.points_award_interval)
+
+            seconds_left = max(0, (last_award_time + interval) - current_time)
+            minutes = seconds_left // 60
+            seconds = seconds_left % 60
+
+            self.points_countdown_label.setText(f"Points Update in: {minutes:02d}:{seconds:02d}")
         except Exception as e:
             self.parent.log_status(f"Error updating user stats: {e}", exc_info=True)
+
+    def add_points_to_all(self):
+        try:
+            points_text = self.points_input.text().strip()
+            if not points_text or not points_text.isdigit():
+                self.parent.log_status("Please enter a valid number of points")
+                return
+
+            points = int(points_text)
+            success = self.chat_tracker.award_points_to_active_users(force=True, custom_points=points)
+
+            if success:
+                self.parent.log_status(f"Successfully added {points} points to all active users")
+                self.points_input.clear()
+            else:
+                self.parent.log_status("Failed to add points to users")
+        except Exception as e:
+            self.parent.log_status(f"Error adding points: {e}")
 
     def onChatLoadFinished(self, ok):
         if ok:
@@ -137,7 +192,8 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             if result is not None:
                 new_msgs = result.split("\n")
                 new_msg_count = 0
-                self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if user.strip()]
+                self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',')
+                                      if user.strip()]
                 for msg in new_msgs:
                     parts = msg.split("||")
                     if len(parts) == 4:
@@ -149,6 +205,8 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                             self.process_message(msg_id, user, message, member_status)
                             new_msg_count += 1
                 if new_msg_count > 0:
+                    self.message_count += new_msg_count
+                    self.message_count_label.setText(f"Messages: {self.message_count} added")
                     self.parent.log_status(f"Added {new_msg_count} new messages")
                 self.update_hotwords()
             else:
@@ -182,25 +240,29 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                     messages.append(message.strip())
 
             if len(messages) < 30:
-                self.hotword_label.setText("HOT-WORD: Not enough data")
+                self.hotword_display.setText("HOT-WORDS: Not enough data")
                 self.parent.log_status("Not enough messages for hotword analysis")
                 return
 
             if self.top3_checkbox.isChecked():
                 top3 = analyze_top_messages(messages, top_n=3)
                 if top3:
-                    self.hotword_label.setText(f"TOP 3: {', '.join([word for word, _ in top3])}")
+                    hot_words_text = "HOT-WORDS (TOP 3):\n"
+                    for idx, (word, percent) in enumerate(top3):
+                        hot_words_text += f"{idx + 1}. {word} ({percent:.1f}%)\n"
+
+                    self.hotword_display.setText(hot_words_text)
                     update_hotword_html(None, None, top3=top3)
                     self.parent.log_status("Updated TOP 3 hotwords")
                 else:
-                    self.hotword_label.setText("HOT-WORD: N/A")
+                    self.hotword_display.setText("HOT-WORDS: N/A")
             else:
                 hotword, percent = analyze_hot_message(messages)
                 if hotword:
-                    self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
+                    self.hotword_display.setText(f"HOT-WORD:\n{hotword.upper()}\n{percent:.1f}%")
                     update_hotword_html(hotword, percent)
                 else:
-                    self.hotword_label.setText("HOT-WORD: N/A")
+                    self.hotword_display.setText("HOT-WORD: N/A")
         except Exception as e:
             self.parent.log_status(f"Error updating hotwords: {e}")
             self.parent.log_status(f"Error updating hotwords: {e}")
@@ -208,7 +270,8 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
     def load_settings(self):
         self.parent.log_status("Loading Youtube Watcher settings")
         try:
-            self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if user.strip()]
+            self.ignored_users = [user.strip() for user in self.parent.settings.get('ignored_users', '').split(',') if
+                                  user.strip()]
             self.ignored_label.setText(f"Ignored: {', '.join(self.ignored_users)}")
             youtube_api = self.parent.settings.get("youtube_api", "")
             yt_channel = self.parent.settings.get("yt_channel", "")
@@ -216,6 +279,8 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             self.parent.log_status("Resetting database for new session")
             self.chat_tracker.reset_database()
             self.seen_message_ids.clear()
+            self.message_count = 0
+            self.message_count_label.setText("Messages: 0 added")
             live_video_id = get_live_video_id(yt_channel, youtube_api)
             if live_video_id:
                 self.parent.log_status(f"Live video found: {live_video_id}")

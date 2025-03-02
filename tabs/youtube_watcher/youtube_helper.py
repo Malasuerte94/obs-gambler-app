@@ -151,8 +151,8 @@ class YouTubeChatTracker:
             logger.error(f"Error processing timeouts: {e}", exc_info=True)
             return []
 
-    def award_points_to_active_users(self, force=False):
-        points = int(self.settings.get('chat_points', 1))
+    def award_points_to_active_users(self, force=False, custom_points=None):
+        points = custom_points if custom_points is not None else int(self.settings.get('chat_points', 1))
         try:
             current_time = time.time()
             time_since_last_award = current_time - self.last_points_award_time
@@ -172,7 +172,7 @@ class YouTubeChatTracker:
 
             result = award_points(user_ids, points, self.settings.get('streamer_id'), self.api_client)
 
-            if result:
+            if result and not force:
                 self.last_points_award_time = current_time
 
             return result
