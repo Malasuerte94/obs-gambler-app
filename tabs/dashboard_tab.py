@@ -11,6 +11,7 @@ class DashboardTab(QtWidgets.QWidget):
         self.parent = parent
         self.api_client = APIClient(parent.settings)
         self.init_ui()
+        self.load_settings()
 
     def init_ui(self):
         layout = QtWidgets.QGridLayout(self)
@@ -153,7 +154,9 @@ class DashboardTab(QtWidgets.QWidget):
             self.parent.log_status(f"Error: Failed to download casino logo - {e}")
 
         # Save selected casino in settings
-        self.parent.settings.set("selected_casino", selected_casino)
+        self.parent.settings["selected_casino"] = selected_casino
+        self.parent.settings_manager.save(self.parent.settings)
+
         self.parent.log_status(f"Dashboard settings saved successfully. Selected Casino: {selected_casino}")
 
     def trigger_spin(self):

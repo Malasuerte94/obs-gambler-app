@@ -6,6 +6,7 @@ class SettingsTab(QtWidgets.QWidget):
         super().__init__()
         self.parent = parent
         self.init_ui()
+        self.load_settings()
 
     def init_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
@@ -27,8 +28,6 @@ class SettingsTab(QtWidgets.QWidget):
         save_button = QtWidgets.QPushButton("Save Settings")
         save_button.clicked.connect(self.save_settings)
         layout.addWidget(save_button)
-
-        self.load_settings()
 
     def create_api_settings(self):
         api_settings = QtWidgets.QWidget()
@@ -128,18 +127,20 @@ class SettingsTab(QtWidgets.QWidget):
             self.casino_title_entry.setText(filename)
 
     def save_settings(self):
-        self.parent.settings.set("api_url", self.api_url_entry.text().strip())
-        self.parent.settings.set("streamer_id", self.api_streamer_id_entry.text().strip())
-        self.parent.settings.set("offer_file", self.offer_entry.text().strip())
-        self.parent.settings.set("deposit_file", self.deposit_entry.text().strip())
-        self.parent.settings.set("casino_play_image_file", self.casino_play_image_entry.text().strip())
-        self.parent.settings.set("casino_title_file", self.casino_title_entry.text().strip())
-        self.parent.settings.set("youtube_api", self.youtube_api_entry.text().strip())
-        self.parent.settings.set("yt_channel", self.yt_channel_entry.text().strip())
-        self.parent.settings.set("kick_channel", self.kick_channel_entry.text().strip())
-        self.parent.settings.set("chat_points", self.points_entry.text().strip())
-        self.parent.settings.set("chat_interval", self.interval_entry.text().strip())
-        self.parent.settings.set("ignored_users", self.ignored_users_entry.text().strip())
+        self.parent.settings["api_url"] = self.api_url_entry.text().strip()
+        self.parent.settings["streamer_id"] = self.api_streamer_id_entry.text().strip()
+        self.parent.settings["offer_file"] = self.offer_entry.text().strip()
+        self.parent.settings["deposit_file"] = self.deposit_entry.text().strip()
+        self.parent.settings["casino_play_image_file"] = self.casino_play_image_entry.text().strip()
+        self.parent.settings["casino_title_file"] = self.casino_title_entry.text().strip()
+        self.parent.settings["youtube_api"] = self.youtube_api_entry.text().strip()
+        self.parent.settings["yt_channel"] = self.yt_channel_entry.text().strip()
+        self.parent.settings["kick_channel"] = self.kick_channel_entry.text().strip()
+        self.parent.settings["chat_points"] = self.points_entry.text().strip()
+        self.parent.settings["chat_interval"] = self.interval_entry.text().strip()
+        self.parent.settings["ignored_users"] = self.ignored_users_entry.text().strip()
+
+        self.parent.settings_manager.save(self.parent.settings)
 
         self.parent.log_status("Settings saved successfully.")
 
