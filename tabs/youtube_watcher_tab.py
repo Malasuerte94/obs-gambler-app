@@ -107,7 +107,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             self.parent.log_status("Failed to load chat page.")
 
     def extractChatMessages(self):
-        self.parent.log_status("Extracting chat messages")
         js_extract = """
         (function(){
             var messages = [];
@@ -139,7 +138,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             if result is not None:
                 new_msgs = result.split("\n")
                 new_msg_count = 0
-                self.parent.log_status(f"Processing {len(new_msgs)} potential messages")
                 for msg in new_msgs:
                     parts = msg.split("||")
                     if len(parts) == 4:
@@ -169,7 +167,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             if not success:
                 self.parent.log_status(f"Failed to add message to database: {msg_id}")
                 return False
-            self.parent.log_status(f"Processed message from {user}: {message[:20]}...")
             return True
         except Exception as e:
             self.parent.log_status(f"Error processing message: {e}", exc_info=True)
@@ -202,7 +199,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                 if hotword:
                     self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
                     update_hotword_html(hotword, percent)
-                    self.parent.log_status("Updated hotword")
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
         except Exception as e:
@@ -214,7 +210,6 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         try:
             youtube_api = self.parent.settings.get("youtube_api", "")
             yt_channel = self.parent.settings.get("yt_channel", "")
-            self.parent.log_status("Checking for live stream on channel: " + yt_channel)
             self.parent.log_status(f"Checking live stream for channel: {yt_channel}")
             self.parent.log_status("Resetting database for new session")
             self.chat_tracker.reset_database()
@@ -222,14 +217,11 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             live_video_id = get_live_video_id(yt_channel, youtube_api)
             if live_video_id:
                 self.parent.log_status(f"Live video found: {live_video_id}")
-                self.parent.log_status("Live video found: " + live_video_id)
                 chat_url = "https://www.youtube.com/live_chat?v=" + live_video_id
                 self.parent.log_status("Loading chat URL: " + chat_url)
                 self.chat_view.setUrl(QtCore.QUrl(chat_url))
                 self.chat_view.loadFinished.connect(self.onChatLoadFinished)
             else:
                 self.parent.log_status("No live video currently streaming")
-                self.parent.log_status("No live video is currently streaming.")
         except Exception as e:
-            self.parent.log_status(f"Error loading settings: {e}", exc_info=True)
             self.parent.log_status("Error while checking live status: " + str(e))
