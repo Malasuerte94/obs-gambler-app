@@ -43,10 +43,14 @@ class APIClient:
             return None
 
     @classmethod
-    def post(cls, endpoint, data=None, files=None):
-        """Send a POST request with optional file upload."""
+    def post(cls, endpoint, data=None, files=None, json=None):
+        """Send a POST request with optional file upload or JSON data."""
         try:
-            response = requests.post(f"{cls.BASE_URL}{endpoint}", data=data, files=files)
+            if json:
+                response = requests.post(f"{cls.BASE_URL}{endpoint}", json=json, files=files)
+            else:
+                response = requests.post(f"{cls.BASE_URL}{endpoint}", data=data, files=files)
+
             response.raise_for_status()
             return response.json() if response.content else {"error": "Empty response from server"}
         except requests.RequestException as e:
