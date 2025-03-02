@@ -28,7 +28,7 @@ class YouTubeChatTracker:
         self.inactive_timeout = int(self.settings.get('chat_interval', 1)) * 60
         self.db_file = db_file
         self.last_points_award_time = 0
-        self.points_award_interval = 60 #here custom
+        self.points_award_interval = self.inactive_timeout
         self.conn = None
         self.cursor = None
         self.reset_database()

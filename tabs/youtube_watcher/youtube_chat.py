@@ -6,7 +6,7 @@ STOP_WORDS = {"și", "la", "si", "de", "in", "în", "pe", "el", "e", "ai", "eu",
 
 def get_live_video_id(yt_channel, api_key):
     if is_dev():
-        return 's-lSqAZeBe0'
+        return 'NIYOTPN-KKs'
     else:
         """
         Check if the given channel is live and return the live video ID.

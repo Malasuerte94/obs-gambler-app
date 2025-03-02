@@ -1,5 +1,4 @@
 import datetime
-import logging
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
@@ -7,20 +6,18 @@ from tabs.youtube_watcher.youtube_chat import get_live_video_id, analyze_hot_mes
 from tabs.youtube_watcher.youtube_helper import YouTubeChatTracker, UserActivityTable
 from tabs.youtube_watcher.youtube_hot_word import update_hotword_html
 
-logger = logging.getLogger('YouTubeWatcher')
-
 
 class YouTubeWatcherTab(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__()
-        logger.info("Initializing YouTubeWatcherTab")
         self.parent = parent
+        self.parent.log_status("Initializing YouTubeWatcherTab")
         self.ignored_users = self.parent.settings.get('ignored_users', '').split(',')
         try:
             self.chat_tracker = YouTubeChatTracker(parent.settings)
-            logger.info("Chat tracker initialized successfully")
+            self.parent.log_status("Chat tracker initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize chat tracker: {e}", exc_info=True)
+            self.parent.log_status(f"Failed to initialize chat tracker: {e}")
             self.parent.log_status(f"Error initializing database: {e}")
         self.seen_message_ids = set()
         self.last_hotword = None
@@ -68,9 +65,9 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             self.user_activity_table = UserActivityTable()
             self.user_activity_table.set_tracker(self.chat_tracker)
             self.splitter.addWidget(self.user_activity_table)
-            logger.info("User activity table initialized successfully")
+            self.parent.log_status("User activity table initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize user activity table: {e}", exc_info=True)
+            self.parent.log_status(f"Failed to initialize user activity table: {e}", exc_info=True)
             self.parent.log_status(f"Error setting up user activity table: {e}")
 
         self.chat_view = QWebEngineView()
@@ -87,30 +84,30 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         self.stats_timer.timeout.connect(self.update_user_stats)
         self.stats_timer.start(5000)
 
-        logger.info("YouTubeWatcherTab initialization complete")
+        self.parent.log_status("YouTubeWatcherTab initialization complete")
         self.load_settings()
 
     def update_user_stats(self):
         try:
             active_count = self.chat_tracker.get_active_count()
             self.active_users_label.setText(f"Active Users: {active_count}")
-            logger.debug(f"Updated active users count: {active_count}")
+            self.parent.log_status(f"Updated active users count: {active_count}")
         except Exception as e:
-            logger.error(f"Error updating user stats: {e}", exc_info=True)
+            self.parent.log_status(f"Error updating user stats: {e}", exc_info=True)
 
     def onChatLoadFinished(self, ok):
         if ok:
-            logger.info("Chat page loaded successfully")
+            self.parent.log_status("Chat page loaded successfully")
             self.parent.log_status("Chat page loaded successfully. Starting extraction...")
             self.chat_timer = QtCore.QTimer(self)
             self.chat_timer.timeout.connect(self.extractChatMessages)
             self.chat_timer.start(1000)
         else:
-            logger.error("Failed to load chat page")
+            self.parent.log_status("Failed to load chat page")
             self.parent.log_status("Failed to load chat page.")
 
     def extractChatMessages(self):
-        logger.debug("Extracting chat messages")
+        self.parent.log_status("Extracting chat messages")
         js_extract = """
         (function(){
             var messages = [];
@@ -134,7 +131,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
         try:
             self.chat_view.page().runJavaScript(js_extract, self.handleChatMessages)
         except Exception as e:
-            logger.error(f"Error executing JavaScript for chat extraction: {e}", exc_info=True)
+            self.parent.log_status(f"Error executing JavaScript for chat extraction: {e}", exc_info=True)
             self.parent.log_status(f"Error extracting chat: {e}")
 
     def handleChatMessages(self, result):
@@ -142,7 +139,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             if result is not None:
                 new_msgs = result.split("\n")
                 new_msg_count = 0
-                logger.debug(f"Processing {len(new_msgs)} potential messages")
+                self.parent.log_status(f"Processing {len(new_msgs)} potential messages")
                 for msg in new_msgs:
                     parts = msg.split("||")
                     if len(parts) == 4:
@@ -154,13 +151,13 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                             self.process_message(msg_id, user, message, member_status)
                             new_msg_count += 1
                 if new_msg_count > 0:
-                    logger.info(f"Added {new_msg_count} new messages")
+                    self.parent.log_status(f"Added {new_msg_count} new messages")
                 self.update_hotwords()
             else:
-                logger.debug("No chat messages extracted")
+                self.parent.log_status("No chat messages extracted")
                 self.parent.log_status("No chat messages extracted.")
         except Exception as e:
-            logger.error(f"Error handling chat messages: {e}", exc_info=True)
+            self.parent.log_status(f"Error handling chat messages: {e}", exc_info=True)
             self.parent.log_status(f"Error processing chat messages: {e}")
 
     def process_message(self, msg_id, user, message, member_status):
@@ -170,12 +167,12 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             success = self.chat_tracker.add_message(msg_id, user, message, member_status, timestamp)
             if not success:
-                logger.warning(f"Failed to add message to database: {msg_id}")
+                self.parent.log_status(f"Failed to add message to database: {msg_id}")
                 return False
-            logger.debug(f"Processed message from {user}: {message[:20]}...")
+            self.parent.log_status(f"Processed message from {user}: {message[:20]}...")
             return True
         except Exception as e:
-            logger.error(f"Error processing message: {e}", exc_info=True)
+            self.parent.log_status(f"Error processing message: {e}", exc_info=True)
             self.parent.log_status(f"Error processing message: {e}")
             return False
 
@@ -189,7 +186,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
 
             if len(messages) < 30:
                 self.hotword_label.setText("HOT-WORD: Not enough data")
-                logger.debug("Not enough messages for hotword analysis")
+                self.parent.log_status("Not enough messages for hotword analysis")
                 return
 
             if self.top3_checkbox.isChecked():
@@ -197,7 +194,7 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                 if top3:
                     self.hotword_label.setText(f"TOP 3: {', '.join([word for word, _ in top3])}")
                     update_hotword_html(None, None, top3=top3)
-                    logger.info(f"Updated TOP 3 hotwords: {', '.join([word for word, _ in top3])}")
+                    self.parent.log_status("Updated TOP 3 hotwords")
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
             else:
@@ -205,34 +202,34 @@ class YouTubeWatcherTab(QtWidgets.QWidget):
                 if hotword:
                     self.hotword_label.setText(f"HOT-WORD: {hotword.upper()} {percent:.1f}%")
                     update_hotword_html(hotword, percent)
-                    logger.info(f"Updated hotword: {hotword.upper()} {percent:.1f}%")
+                    self.parent.log_status("Updated hotword")
                 else:
                     self.hotword_label.setText("HOT-WORD: N/A")
         except Exception as e:
-            logger.error(f"Error updating hotwords: {e}", exc_info=True)
+            self.parent.log_status(f"Error updating hotwords: {e}")
             self.parent.log_status(f"Error updating hotwords: {e}")
 
     def load_settings(self):
-        logger.info("Loading Youtube Watcher settings")
+        self.parent.log_status("Loading Youtube Watcher settings")
         try:
             youtube_api = self.parent.settings.get("youtube_api", "")
             yt_channel = self.parent.settings.get("yt_channel", "")
             self.parent.log_status("Checking for live stream on channel: " + yt_channel)
-            logger.info(f"Checking live stream for channel: {yt_channel}")
-            logger.info("Resetting database for new session")
+            self.parent.log_status(f"Checking live stream for channel: {yt_channel}")
+            self.parent.log_status("Resetting database for new session")
             self.chat_tracker.reset_database()
             self.seen_message_ids.clear()
             live_video_id = get_live_video_id(yt_channel, youtube_api)
             if live_video_id:
-                logger.info(f"Live video found: {live_video_id}")
+                self.parent.log_status(f"Live video found: {live_video_id}")
                 self.parent.log_status("Live video found: " + live_video_id)
                 chat_url = "https://www.youtube.com/live_chat?v=" + live_video_id
                 self.parent.log_status("Loading chat URL: " + chat_url)
                 self.chat_view.setUrl(QtCore.QUrl(chat_url))
                 self.chat_view.loadFinished.connect(self.onChatLoadFinished)
             else:
-                logger.warning("No live video currently streaming")
+                self.parent.log_status("No live video currently streaming")
                 self.parent.log_status("No live video is currently streaming.")
         except Exception as e:
-            logger.error(f"Error loading settings: {e}", exc_info=True)
+            self.parent.log_status(f"Error loading settings: {e}", exc_info=True)
             self.parent.log_status("Error while checking live status: " + str(e))
